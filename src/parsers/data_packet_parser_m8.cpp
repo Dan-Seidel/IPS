@@ -6,6 +6,72 @@
  ****************************************************************/
 
 #include <quanergy/parsers/data_packet_parser_m8.h>
+#include <pcl/segmentation/segment_differences.h>
+#include <pcl/io/pcd_io.h>
+#include <unordered_map>
+#include <string>
+#include <cstring>
+#include <cmath>
+
+#include <quanergy/osc/OscOutboundPacketStream.h>
+#include <quanergy/osc/OscTypes.h>
+#include <quanergy/ip/UdpSocket.h>
+#include <quanergy/ip/IpEndpointName.h>
+#include <quanergy/osc/OscReceivedElements.h>
+#include <quanergy/osc/OscPacketListener.h>
+
+#define ADDRESS "127.0.0.1"
+#define RECEIVING_PORT 7000
+#define SENDING_PORT 8000
+#define OUTPUT_BUFFER_SIZE 1024
+
+// class IpsPacketListener : public osc::OscPacketListener {
+// protected:
+
+//     virtual void ProcessMessage( const osc::ReceivedMessage& m, 
+//         const IpEndpointName& remoteEndpoint )
+//     {
+//         (void) remoteEndpoint; // suppress unused parameter warning
+
+//         try{
+//             // example of parsing single messages. osc::OsckPacketListener
+//             // handles the bundle traversal.
+            
+//             if( std::strcmp( m.AddressPattern(), "/test1" ) == 0 ){
+//                 // example #1 -- argument stream interface
+//                 osc::ReceivedMessageArgumentStream args = m.ArgumentStream();
+//                 bool a1;
+//                 osc::int32 a2;
+//                 float a3;
+//                 const char *a4;
+//                 args >> a1 >> a2 >> a3 >> a4 >> osc::EndMessage;
+                
+//                 std::cout << "received '/test1' message with arguments: "
+//                     << a1 << " " << a2 << " " << a3 << " " << a4 << "\n";
+                
+//             }else if( std::strcmp( m.AddressPattern(), "/test2" ) == 0 ){
+//                 // example #2 -- argument iterator interface, supports
+//                 // reflection for overloaded messages (eg you can call 
+//                 // (*arg)->IsBool() to check if a bool was passed etc).
+//                 // osc::ReceivedMessage::const_iterator arg = m.ArgumentsBegin();
+//                 // bool a1 = (arg++)->AsBool();
+//                 // int a2 = (arg++)->AsInt32();
+//                 // float a3 = (arg++)->AsFloat();
+//                 // const char *a4 = (arg++)->AsString();
+//                 // if( arg != m.ArgumentsEnd() )
+//                 //     throw osc::ExcessArgumentException();
+                
+//                 // std::cout << "received '/test2' message with arguments: "
+//                 //     << a1 << " " << a2 << " " << a3 << " " << a4 << "\n";
+//             }
+//         }catch( osc::Exception& e ){
+//             // any parsing errors such as unexpected argument types, or 
+//             // missing arguments get thrown as exceptions.
+//             std::cout << "error while parsing message: "
+//                 << m.AddressPattern() << ": " << e.what() << "\n";
+//         }
+//     }
+// };
 
 namespace quanergy
 {
@@ -21,7 +87,7 @@ namespace quanergy
       , worker_cloud_(new PointCloudHVDIR())
       , horizontal_angle_lookup_table_(M8_NUM_ROT_ANGLES+1)
       , start_azimuth_(0)
-      , degrees_per_cloud_(360.0)
+      , degrees_per_cloud_(361.0) // if this is greater than 360 we are getting a full scan
     {
       // Reserve space ahead of time for incoming data
       current_cloud_->reserve(maximum_cloud_size_);
@@ -155,6 +221,8 @@ namespace quanergy
             delta_angle += 360.0;
           }
         }
+
+        //std::cout << "delta_angle: " << delta_angle << std::endl;
         
         if ( delta_angle >= degrees_per_cloud_ || (degrees_per_cloud_==360.0 && (direction_*azimuth_angle < direction_*last_azimuth_) ))
         {
@@ -194,6 +262,232 @@ namespace quanergy
             std::cout << "Warning: Minimum cloud size limit of (" << minimum_cloud_size_
                 << ") not reached (" << current_cloud_->size() << ")" << std::endl;
           }
+
+          // BEGINNING OF OUR CODE
+
+          static std::unordered_map<std::string, std::vector<double>> base_scan = {};
+          static std::unordered_map<std::string, std::vector<double>> comp_scan = {};
+          static int visits_here = 0;
+          static double origin_intensity = 0;
+
+          if (visits_here == 5) {
+            for (PointCloudHVDIR::const_iterator i = current_cloud_->begin(); i != current_cloud_->end(); ++i) {
+              std::vector<double> v;
+              v.push_back(i->h);
+              v.push_back(i->v);
+              v.push_back(i->d);
+              v.push_back(i->intensity);
+              base_scan[std::to_string(floor(i->h * 500 + 0.005) / 500) + std::to_string(floor(i->v * 500 + 0.005) / 500)] = v;
+
+              // Get intensity of origin
+              if (i->h > -0.001 && i->h < 0.001 && i->v > -0.001 && i->v < 0.001) {
+                std::cout << "setting base origin intensity" << std::endl;
+                origin_intensity = i->intensity;
+              }
+            }
+          }
+
+          if (visits_here > 5) {
+            for (PointCloudHVDIR::const_iterator i = current_cloud_->begin(); i != current_cloud_->end(); ++i) {
+              std::vector<double> v;
+              v.push_back(i->h);
+              v.push_back(i->v);
+              v.push_back(i->d);
+              v.push_back(i->intensity);
+              comp_scan[std::to_string(floor(i->h * 500 + 0.005) / 500) + std::to_string(floor(i->v * 500 + 0.005) / 500)] = v;
+
+              // Check intensity of origin
+              // If intensity has changed more than 10% - do something
+              if (i->h > -0.001 && i->h < 0.001 && i->v > -0.001 && i->v < 0.001) {
+                if (std::abs(i->intensity - origin_intensity) > (origin_intensity*.1)) {
+                  std::cout << "base_origin_intensity: " << origin_intensity << std::endl; 
+                  std::cout << "comp_origin_intensity: " << i->intensity << std::endl;
+                }
+              }
+            }
+              
+          
+            int count = 0;
+            double max_h = -100;
+            double min_h = 100;
+            double max_v = -100;
+            double min_v = 100;
+            double max_d = 0;
+            double min_d = 200;
+            double max_h_distance;
+            double min_h_distance;
+            double max_h_intensity;
+            double min_h_intensity;
+            double max_v_distance;
+            double min_v_distance;
+            double max_v_intensity;
+            double min_v_intensity;
+            
+            
+
+
+            for (auto i = comp_scan.begin(); i != comp_scan.end(); ++i) {
+                if (base_scan.find(i->first) != base_scan.end()) {
+                  double distance = base_scan.find(i->first)->second[2];                  
+                  if (std::abs(i->second[2] - distance) > distance *0.04) {
+                    //std::cout << "h: " << i->second[0] << ", v" << i->second[1] << ", d" << i->second[2] << ", intensity" << i->second[3] << std::endl;
+                    count++;
+                    if (i->second[0] > max_h) {
+                      max_h = i->second[0];
+                      max_h_distance = i->second[2];
+                      max_h_intensity = i->second[3];
+                    } 
+                    if (i->second[0] < min_h) {
+                      min_h = i->second[0];
+                      min_h_distance = i->second[2];
+                      min_h_intensity = i->second[3];
+                    }
+                    if (i->second[1] > max_v) {
+                      max_v = i->second[1];
+                      max_v_distance = i->second[2];
+                      max_v_intensity = i->second[3];
+                    } 
+                    if (i->second[1] < min_v) {
+                      min_v = i->second[1];
+                      min_v_distance = i->second[2];
+                      min_v_intensity = i->second[3];
+                    }
+                    if (i->second[2] > max_d) {
+                      max_d = i->second[2];
+                    } 
+                    if (i->second[2] < min_d) {
+                      min_d = i->second[2];
+                    }
+                  }
+                } else {
+                  //std::cout << "comp:" << i->first << ":" << i->second << std::endl;
+                }
+                //if (i->ring == 0) {
+                    //std::cout << "h: " << i->h << ", v: " << i->v << ", d: " << i->d << ", ring: " << i->ring << ", intensity: " << i->intensity << ", index: " << index << std::endl;
+                    //++index;
+                //}
+            }
+            
+
+            // Margine setup
+            double margine_x = 0; // Margine width in meters
+            double margine_y = 0;
+            double max_vm = max_v+0.0567+atan(margine_y/max_v_distance); // add angle (0.0542 radians, 3 degrees) to protect the space before next empty ring and add margin angle in radians
+            double min_vm = min_v-0.0567-atan(margine_y/min_v_distance); //-0.0567
+
+
+            // Sensor offset compensation (vertical offset only)
+            double offset_y = 0.175; //height of sensor origin above scanner origin in meters
+            double max_vt = atan((offset_y+max_v_distance*sin(max_vm))/(max_v_distance*cos(max_vm))); //v transformed to projector origin
+            double min_vt = atan((offset_y+min_v_distance*sin(min_vm))/(min_v_distance*cos(min_vm)));
+            double max_yc = 191*(atan((offset_y+max_v_distance*sin(max_v))/(max_v_distance*cos(max_v)))); 
+            double min_yc = 191*(atan((offset_y+min_v_distance*sin(min_v))/(min_v_distance*cos(min_v))));
+            double max_xc = max_h*-191;
+            double min_xc = min_h*-191;
+            double avg_xc = min_xc+((max_xc-min_xc)/2);
+            double avg_yc = min_yc+((max_yc-min_yc)/2);
+            
+            // Scale for beyond software
+            // Projector field of view is roughly -30 t0 +30 degrees
+            // Beyond software window clipout effect value range is -100 to 100
+            // x = (h+margine)*(180\PI)*(100\30)
+            double max_x = (max_h+margine_x)*-191;
+            double min_x = (min_h-margine_x)*-191;
+            double min_y;
+            if (min_v < -0.3) {min_y = -110;}
+            if (min_v > -0.3) {min_y = min_vt*191;} 
+            double max_y;
+            if (max_v > 0.04) {max_y = 110;}
+            if (max_v < 0.04) {max_y = max_vt*191;} 
+            // else {max_y = max_v*191+margine_y;}
+            
+            /*std::cout << "max_v: " << max_v << ", max_vt: " << max_vt <<
+            ", max_v_distance: " << max_v_distance << ", min_v_distance: " << min_v_distance <<
+            ", max_v_intensity: " << max_v_intensity << ", min_v_intensity: " << min_v_intensity << std::endl;*/
+
+            
+            
+
+
+            //std::cout << "count: " << count << ", max_h: " << max_h << ", min_h: " << min_h << ", max_v: " << max_v << ", min_v: " << min_v << ", max_d: " << max_d << ", min_d: " << min_d << std::endl;
+
+            UdpTransmitSocket transmitSocket( IpEndpointName( ADDRESS, SENDING_PORT ) );
+            //double BPM = -10;
+            char buffer[OUTPUT_BUFFER_SIZE];
+            osc::OutboundPacketStream p( buffer, OUTPUT_BUFFER_SIZE );
+            
+            p << osc::BeginBundleImmediate
+                
+                << osc::BeginMessage("/b/IPS/LIDAR_PROTECT.Effect.0/Keys.0/Value1") << (int)(max_x)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/IPS/LIDAR_PROTECT.Effect.0/Keys.0/Value2") << (int)(min_x)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/IPS/LIDAR_PROTECT.Effect.0/Keys.0/Value3") << (int)(min_y)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/IPS/LIDAR_PROTECT.Effect.0/Keys.0/Value4") << (int)(max_y)
+                << osc::EndMessage
+                
+                << osc::BeginMessage("/b/CALIBRATION.PositionX") << (int)(max_xc)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/CALIBRATION.PositionY") << (int)(max_yc)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/BEAMTEST.beamY") << (int)(max_y)
+                << osc::EndMessage
+                << osc::EndBundle;
+            
+            transmitSocket.Send( p.Data(), p.Size() );
+
+            // IpsPacketListener listener;
+            // UdpListeningReceiveSocket s(
+            //   IpEndpointName( IpEndpointName::ANY_ADDRESS, RECEIVING_PORT ),
+            //   &listener
+            // );
+
+              /*
+              std::cout << "comparison original -------------------------------------";
+              for (PointCloudHVDIR::const_iterator i = comparison_scan.begin(); i != comparison_scan.end(); ++i) {
+                  if (i->ring == 0) {
+                      std::cout << i->h << std::endl;
+                  }
+              }*/
+
+              //const auto base_scan_B = base_scan;
+
+              //boost::shared_ptr<pcl::search::Search<quanergy::PointHVDIR>> x = boost::shared_ptr<pcl::search::Search<quanergy::PointHVDIR>>();
+              //pcl::PointCloud<quanergy::PointHVDIR> y = pcl::PointCloud<quanergy::PointHVDIR>();
+
+              //pcl::getPointCloudDifference(base_scan, comparison_scan, 0.001, x, y);
+
+            // Round angles in both scans to nearest thousandth radian
+            //std::cout << "base rounded -------------------------------------";
+
+
+            /*
+            std::cout << "comparison rounded -------------------------------------";
+            for (PointCloudHVDIR::const_iterator i = comparison_scan.begin(); i != comparison_scan.end(); ++i) {
+                if (i->ring == 0) {
+                    std::cout << (floor(i->h * 500 + 0.005)) / 500 << std::endl;
+                }
+            }*/
+
+              // for (PointCloudHVDIR::const_iterator i = base_scan.begin(); i != base_scan.end(); ++i) {
+              //     if (i->ring == 0) {
+              //         std::cout << i->h << std::endl;
+              //     }
+              // }
+              // for (PointCloudHVDIR::const_iterator i = comparison_scan.begin(); i != comparison_scan.end(); ++i) {
+              //     if (i->ring == 0) {
+              //         std::cout << i->h << std::endl;
+              //     }
+              // }
+          }
+          visits_here++;
+
+          // Get difference in distances between base and comparison scan
+          //auto comparison_scan = PointCloudHVDIR(); 
+          //for (PointCloudHVDIR::const_iterator i = base_scan.begin(); i != base_scan.end(); ++i) {
+          //    i->h = Math.round(i->h);
+          //}
 
           // start a new cloud
           current_cloud_.reset(new PointCloudHVDIR());

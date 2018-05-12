@@ -89,6 +89,11 @@ set(client_SRCS
   src/parsers/data_packet_parser_01.cpp
   src/parsers/data_packet_parser_04.cpp
   src/parsers/data_packet_parser_m8.cpp
+  src/osc/OscOutboundPacketStream.cpp
+  src/osc/OscTypes.cpp
+  src/ip/posix/UdpSocket.cpp
+  src/ip/IpEndpointName.cpp
+  src/ip/posix/NetworkingUtils.cpp
   ${project_HEADERS}
 )
 

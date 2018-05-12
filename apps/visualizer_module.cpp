@@ -41,6 +41,38 @@ void VisualizerModule::slot(const quanergy::PointCloudXYZIRConstPtr& new_cloud)
   }
 }
 
+/*
+void getScan() {
+
+
+          static auto base_scan = new PointCloudHVDIR();
+          auto comparison_scan = new PointCloudHVDIR();
+          static int visits_here = 0;
+
+            for (PointCloudHVDIR::const_iterator i = current_cloud_->begin(); i != current_cloud_->end(); ++i) {
+              PointCloudHVDIR::PointType hvdir;
+              hvdir.x = i->x;
+              hvdir.y = i->y;
+              hvdir.z = i->z;
+              hvdir.intensity = i->intensity;
+              hvdir.ring = i->ring;
+              base_scan->push_back(hvdir);
+            }
+          if (visits_here == 40) {
+              for (PointCloudHVDIR::const_iterator i = base_scan->begin(); i != base_scan->end(); ++i) {
+                  if (i->ring == 0) {
+                      std::cout << i->h << std::endl;
+                  }
+              }
+              for (PointCloudHVDIR::const_iterator i = comparison_scan->begin(); i != comparison_scan->end(); ++i) {
+                  if (i->ring == 0) {
+                      std::cout << i->h << std::endl;
+                  }
+              }        
+          }
+          visits_here++;
+}*/
+
 /** \brief run the application */
 void VisualizerModule::run()
 {
