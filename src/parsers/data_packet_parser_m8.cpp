@@ -300,8 +300,8 @@ namespace quanergy
               // If intensity has changed more than 10% - do something
               if (i->h > -0.001 && i->h < 0.001 && i->v > -0.001 && i->v < 0.001) {
                 if (std::abs(i->intensity - origin_intensity) > (origin_intensity*.1)) {
-                  std::cout << "base_origin_intensity: " << origin_intensity << std::endl; 
-                  std::cout << "comp_origin_intensity: " << i->intensity << std::endl;
+                  //std::cout << "base_origin_intensity: " << origin_intensity << std::endl; 
+                  //std::cout << "comp_origin_intensity: " << i->intensity << std::endl;
                 }
               }
             }
