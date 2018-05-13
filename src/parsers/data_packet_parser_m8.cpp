@@ -299,9 +299,29 @@ namespace quanergy
               // Check intensity of origin
               // If intensity has changed more than 10% - do something
               if (i->h > -0.001 && i->h < 0.001 && i->v > -0.001 && i->v < 0.001) {
-                if (std::abs(i->intensity - origin_intensity) > (origin_intensity*.1)) {
-                  //std::cout << "base_origin_intensity: " << origin_intensity << std::endl; 
-                  //std::cout << "comp_origin_intensity: " << i->intensity << std::endl;
+                if (std::abs(i->intensity - origin_intensity) > (origin_intensity*.2)) {
+                  UdpTransmitSocket transmitSocket( IpEndpointName( ADDRESS, SENDING_PORT ) );
+                  char buffer[OUTPUT_BUFFER_SIZE];
+                  osc::OutboundPacketStream p( buffer, OUTPUT_BUFFER_SIZE );
+            
+                  p << osc::BeginBundleImmediate
+                    << osc::BeginMessage("/b/Beam.0.Power") << (int)(20)
+                    << osc::EndMessage
+                  << osc::EndBundle;
+            
+                  transmitSocket.Send( p.Data(), p.Size() );
+                }
+                else {
+                  UdpTransmitSocket transmitSocket( IpEndpointName( ADDRESS, SENDING_PORT ) );
+                  char buffer[OUTPUT_BUFFER_SIZE];
+                  osc::OutboundPacketStream p( buffer, OUTPUT_BUFFER_SIZE );
+            
+                  p << osc::BeginBundleImmediate
+                    << osc::BeginMessage("/b/Beam.0.Power") << (int)(10)
+                    << osc::EndMessage
+                  << osc::EndBundle;
+            
+                  transmitSocket.Send( p.Data(), p.Size() );
                 }
               }
             }
@@ -322,8 +342,6 @@ namespace quanergy
             double min_v_distance;
             double max_v_intensity;
             double min_v_intensity;
-            
-            
 
 
             for (auto i = comp_scan.begin(); i != comp_scan.end(); ++i) {
@@ -401,9 +419,8 @@ namespace quanergy
             if (max_v < 0.04) {max_y = max_vt*191;} 
             // else {max_y = max_v*191+margine_y;}
             
-            /*std::cout << "max_v: " << max_v << ", max_vt: " << max_vt <<
-            ", max_v_distance: " << max_v_distance << ", min_v_distance: " << min_v_distance <<
-            ", max_v_intensity: " << max_v_intensity << ", min_v_intensity: " << min_v_intensity << std::endl;*/
+            // std::cout << "max_v: " << max_v << ", min_v: " << min_v <<
+            // ", max_h: " << max_h << ", min_h: " << min_h << std::endl;
 
             
             
@@ -431,7 +448,13 @@ namespace quanergy
                 << osc::EndMessage
                 << osc::BeginMessage("/b/CALIBRATION.PositionY") << (int)(max_yc)
                 << osc::EndMessage
-                << osc::BeginMessage("/b/BEAMTEST.beamY") << (int)(max_y)
+                << osc::BeginMessage("/b/LIDARDATA.MAX_V.Value") << (float)(max_v)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/LIDARDATA.MIN_V.Value") << (float)(min_v)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/LIDARDATA.MIN_H.Value") << (float)(min_h)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/LIDARDATA.MAX_H.Value") << (float)(max_h)
                 << osc::EndMessage
                 << osc::EndBundle;
             
