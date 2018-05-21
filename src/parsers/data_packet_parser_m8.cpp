@@ -268,7 +268,11 @@ namespace quanergy
           static std::unordered_map<std::string, std::vector<double>> base_scan = {};
           static std::unordered_map<std::string, std::vector<double>> comp_scan = {};
           static int visits_here = 0;
-          static double origin_intensity = 0;
+          static float origin_baseline_distance = 0;
+          static float origin_baseline_intensity = 0;
+          static float origin_distance = 0;
+          static float origin_intensity = 0;
+
 
           if (visits_here == 5) {
             for (PointCloudHVDIR::const_iterator i = current_cloud_->begin(); i != current_cloud_->end(); ++i) {
@@ -280,9 +284,24 @@ namespace quanergy
               base_scan[std::to_string(floor(i->h * 500 + 0.005) / 500) + std::to_string(floor(i->v * 500 + 0.005) / 500)] = v;
 
               // Get intensity of origin
-              if (i->h > -0.001 && i->h < 0.001 && i->v > -0.001 && i->v < 0.001) {
-                std::cout << "setting base origin intensity" << std::endl;
-                origin_intensity = i->intensity;
+              if (i->h > -0.0015 && i->h < 0.0015 && i->v > -0.0015 && i->v < 0.0015) {
+                std::cout << "setting baseline origin intensity" << std::endl;
+                origin_baseline_intensity = i->intensity;
+                origin_baseline_distance = i->d;
+
+                UdpTransmitSocket transmitSocket( IpEndpointName( ADDRESS, SENDING_PORT ) );
+                  char buffer[OUTPUT_BUFFER_SIZE];
+                osc::OutboundPacketStream p( buffer, OUTPUT_BUFFER_SIZE );
+                p << osc::BeginBundleImmediate
+                    //<< osc::BeginMessage("/b/Beam.0.Power") << (int)(40)
+                    //<< osc::EndMessage
+                    //<< osc::BeginMessage("/b/VARIABLES.origin_baseline_distance") << (origin_baseline_distance)
+                    //<< osc::EndMessage
+                    //<< osc::BeginMessage("/b/VARIABLES.origin_baseline_intensity") << (origin_baseline_intensity)
+                    //<< osc::EndMessage
+                  << osc::EndBundle;
+            
+                  transmitSocket.Send( p.Data(), p.Size() );
               }
             }
           }
@@ -295,18 +314,27 @@ namespace quanergy
               v.push_back(i->d);
               v.push_back(i->intensity);
               comp_scan[std::to_string(floor(i->h * 500 + 0.005) / 500) + std::to_string(floor(i->v * 500 + 0.005) / 500)] = v;
+              
+              //std::cout << "baseline distance, "<< origin_baseline_distance << ", baseline intensity, " << origin_baseline_intensity 
+              //<<  ", distance, " << origin_distance<< ", intensity, " << origin_intensity << std::endl;
 
-              // Check intensity of origin
-              // If intensity has changed more than 10% - do something
-              if (i->h > -0.001 && i->h < 0.001 && i->v > -0.001 && i->v < 0.001) {
-                if (std::abs(i->intensity - origin_intensity) > (origin_intensity*.2)) {
+               //Check intensity of origin
+               //If intensity has changed more than 10% - do something
+              if (i->h > -0.0015 && i->h < 0.0015 && i->v > -0.0015 && i->v < 0.0015) {
+                origin_distance = i->d;
+                origin_intensity = i->intensity;
+                if (std::abs(i->intensity - origin_baseline_intensity) > (origin_baseline_intensity*.50)) {
+                  
+                if (std::abs(origin_intensity - origin_baseline_intensity) > (origin_baseline_intensity*.50)) {
                   UdpTransmitSocket transmitSocket( IpEndpointName( ADDRESS, SENDING_PORT ) );
                   char buffer[OUTPUT_BUFFER_SIZE];
                   osc::OutboundPacketStream p( buffer, OUTPUT_BUFFER_SIZE );
             
                   p << osc::BeginBundleImmediate
-                    << osc::BeginMessage("/b/Beam.0.Power") << (int)(20)
-                    << osc::EndMessage
+                    //<< osc::BeginMessage("/b/Beam.0.Power") << (int)(40)
+                    //<< osc::EndMessage
+                    //<< osc::BeginMessage("/b/CALIBRATION.DETECTED.Value") << (int)(1)
+                    //<< osc::EndMessage
                   << osc::EndBundle;
             
                   transmitSocket.Send( p.Data(), p.Size() );
@@ -317,16 +345,26 @@ namespace quanergy
                   osc::OutboundPacketStream p( buffer, OUTPUT_BUFFER_SIZE );
             
                   p << osc::BeginBundleImmediate
-                    << osc::BeginMessage("/b/Beam.0.Power") << (int)(10)
-                    << osc::EndMessage
+                    //<< osc::BeginMessage("/b/Beam.0.Power") << (int)(10)
+                    //<< osc::EndMessage
+                    //<< osc::BeginMessage("/b/VARIABLES.origin_baseline_distance") << (origin_baseline_distance)
+                    //<< osc::EndMessage
+                    //<< osc::BeginMessage("/b/VARIABLES.origin_baseline_intensity") << (origin_baseline_intensity)
+                    //<< osc::EndMessage
+                    //<< osc::BeginMessage("/b/VARIABLES.origin_distance") << (origin_distance)
+                    //<< osc::EndMessage
+                    //<< osc::BeginMessage("/b/VARIABLES.origin_intensity") << (origin_intensity)
+                    //<< osc::EndMessage
+                    //<< osc::BeginMessage("/b/CALIBRATION.DETECTED.Value") << (int)(0)
+                    //<< osc::EndMessage
                   << osc::EndBundle;
             
-                  transmitSocket.Send( p.Data(), p.Size() );
+                  transmitSocket.Send( p.Data(), p.Size() );} //check this bracket
                 }
               }
             }
               
-          
+            // Defining Exlusion Zone variables
             int count = 0;
             double max_h = -100;
             double min_h = 100;
@@ -344,11 +382,11 @@ namespace quanergy
             double min_v_intensity;
 
 
+            // Recording exclusion zone
             for (auto i = comp_scan.begin(); i != comp_scan.end(); ++i) {
                 if (base_scan.find(i->first) != base_scan.end()) {
                   double distance = base_scan.find(i->first)->second[2];                  
                   if (std::abs(i->second[2] - distance) > distance *0.04) {
-                    //std::cout << "h: " << i->second[0] << ", v" << i->second[1] << ", d" << i->second[2] << ", intensity" << i->second[3] << std::endl;
                     count++;
                     if (i->second[0] > max_h) {
                       max_h = i->second[0];
@@ -377,17 +415,17 @@ namespace quanergy
                       min_d = i->second[2];
                     }
                   }
-                } else {
-                  //std::cout << "comp:" << i->first << ":" << i->second << std::endl;
                 }
-                //if (i->ring == 0) {
-                    //std::cout << "h: " << i->h << ", v: " << i->v << ", d: " << i->d << ", ring: " << i->ring << ", intensity: " << i->intensity << ", index: " << index << std::endl;
-                    //++index;
-                //}
             }
+
+            // Switching max and min
+            // Right of center is negative, left of center is positive
+            auto temp = min_h;
+            min_h = max_h*-1;
+            max_h = temp*-1;
             
 
-            // Margine setup
+            // Margin setup
             double margine_x = 0; // Margine width in meters
             double margine_y = 0;
             double max_vm = max_v+0.0567+atan(margine_y/max_v_distance); // add angle (0.0542 radians, 3 degrees) to protect the space before next empty ring and add margin angle in radians
@@ -395,7 +433,7 @@ namespace quanergy
 
 
             // Sensor offset compensation (vertical offset only)
-            double offset_y = 0.175; //height of sensor origin above scanner origin in meters
+            double offset_y = 0.195; //height of sensor origin above scanner origin in meters (measured 0.195 +/-0.002)
             double max_vt = atan((offset_y+max_v_distance*sin(max_vm))/(max_v_distance*cos(max_vm))); //v transformed to projector origin
             double min_vt = atan((offset_y+min_v_distance*sin(min_vm))/(min_v_distance*cos(min_vm)));
             double max_yc = 191*(atan((offset_y+max_v_distance*sin(max_v))/(max_v_distance*cos(max_v)))); 
@@ -417,14 +455,6 @@ namespace quanergy
             double max_y;
             if (max_v > 0.04) {max_y = 110;}
             if (max_v < 0.04) {max_y = max_vt*191;} 
-            // else {max_y = max_v*191+margine_y;}
-            
-            // std::cout << "max_v: " << max_v << ", min_v: " << min_v <<
-            // ", max_h: " << max_h << ", min_h: " << min_h << std::endl;
-
-            
-            
-
 
             //std::cout << "count: " << count << ", max_h: " << max_h << ", min_h: " << min_h << ", max_v: " << max_v << ", min_v: " << min_v << ", max_d: " << max_d << ", min_d: " << min_d << std::endl;
 
@@ -435,27 +465,46 @@ namespace quanergy
             
             p << osc::BeginBundleImmediate
                 
-                << osc::BeginMessage("/b/IPS/LIDAR_PROTECT.Effect.0/Keys.0/Value1") << (int)(max_x)
+                << osc::BeginMessage("/b/IPS/LIDAR_PROTECT.Effect.0/Keys.0/Value1") << (float)(max_x)
                 << osc::EndMessage
-                << osc::BeginMessage("/b/IPS/LIDAR_PROTECT.Effect.0/Keys.0/Value2") << (int)(min_x)
+                << osc::BeginMessage("/b/IPS/LIDAR_PROTECT.Effect.0/Keys.0/Value2") << (float)(min_x)
                 << osc::EndMessage
-                << osc::BeginMessage("/b/IPS/LIDAR_PROTECT.Effect.0/Keys.0/Value3") << (int)(min_y)
+                << osc::BeginMessage("/b/IPS/LIDAR_PROTECT.Effect.0/Keys.0/Value3") << (float)(min_y)
                 << osc::EndMessage
-                << osc::BeginMessage("/b/IPS/LIDAR_PROTECT.Effect.0/Keys.0/Value4") << (int)(max_y)
+                << osc::BeginMessage("/b/IPS/LIDAR_PROTECT.Effect.0/Keys.0/Value4") << (float)(max_y)
                 << osc::EndMessage
                 
-                << osc::BeginMessage("/b/CALIBRATION.PositionX") << (int)(max_xc)
+                << osc::BeginMessage("/b/CALIBRATIONDYNAMIC.PositionX") << (int)(max_xc)
                 << osc::EndMessage
-                << osc::BeginMessage("/b/CALIBRATION.PositionY") << (int)(max_yc)
+                << osc::BeginMessage("/b/CALIBRATIONDYNAMIC.PositionY") << (int)(max_yc)
                 << osc::EndMessage
-                << osc::BeginMessage("/b/LIDARDATA.MAX_V.Value") << (float)(max_v)
+                << osc::BeginMessage("/b/VARIABLES.max_v") << (float)(max_v)
                 << osc::EndMessage
-                << osc::BeginMessage("/b/LIDARDATA.MIN_V.Value") << (float)(min_v)
+                << osc::BeginMessage("/b/VARIABLES.min_v") << (float)(min_v)
                 << osc::EndMessage
-                << osc::BeginMessage("/b/LIDARDATA.MIN_H.Value") << (float)(min_h)
+                << osc::BeginMessage("/b/VARIABLES.min_h") << (float)(min_h)
                 << osc::EndMessage
-                << osc::BeginMessage("/b/LIDARDATA.MAX_H.Value") << (float)(max_h)
+                << osc::BeginMessage("/b/VARIABLES.max_h") << (float)(max_h)
                 << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.max_v_d") << (float)(max_v_distance)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.min_v_d") << (float)(min_v_distance)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.min_h_d") << (float)(min_h_distance)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.max_h_d") << (float)(max_h_distance)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.origin_baseline_distance") << (origin_baseline_distance)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.origin_baseline_intensity") << (origin_baseline_intensity)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.origin_distance") << (origin_distance)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.origin_intensity") << (origin_intensity)
+                << osc::EndMessage
+
+                //<< osc::BeginMessage("/b/VARIABLES.origin_distance") << (float)(origin_distance)
+                //<< osc::EndMessage
                 << osc::EndBundle;
             
             transmitSocket.Send( p.Data(), p.Size() );
