@@ -359,7 +359,7 @@ namespace quanergy
                     //<< osc::EndMessage
                   << osc::EndBundle;
             
-                  transmitSocket.Send( p.Data(), p.Size() );} //check this bracket
+                  transmitSocket.Send( p.Data(), p.Size() );} 
                 }
               }
             }
@@ -370,65 +370,120 @@ namespace quanergy
             double min_h = 100;
             double max_v = -100;
             double min_v = 100;
-            double max_d = 0;
+            double max_d = 1;
             double min_d = 200;
-            double max_h_distance;
-            double min_h_distance;
+            double max_h_distance = 1;
+            double min_h_distance = 1;
             double max_h_intensity;
             double min_h_intensity;
-            double max_v_distance;
-            double min_v_distance;
+            double max_v_distance = 1;
+            double min_v_distance = 1;
             double max_v_intensity;
             double min_v_intensity;
 
+            //Define feild of view variables
+            double fov_min_h;
+            double fov_min_h_d=1;
+            double fov_min_h_i;
+            double fov_max_h;
+            double fov_max_h_d=1;
+            double fov_max_h_i;
+            double fov_min_v; //= -0.3185;
+            double fov_min_v_d=1;
+            double fov_min_v_i;
+            double fov_max_v; //= 0.0558;
+            double fov_max_v_d=1;
+            double fov_max_v_i;
+            double fov_center_d=2;
+            double fov_center_i;
 
-            // Recording exclusion zone
+            // Recording exclusion zone and field of view
             for (auto i = comp_scan.begin(); i != comp_scan.end(); ++i) {
-                if (base_scan.find(i->first) != base_scan.end()) {
-                  double distance = base_scan.find(i->first)->second[2];                  
-                  if (std::abs(i->second[2] - distance) > distance *0.04) {
-                    count++;
-                    if (i->second[0] > max_h) {
-                      max_h = i->second[0];
-                      max_h_distance = i->second[2];
-                      max_h_intensity = i->second[3];
-                    } 
-                    if (i->second[0] < min_h) {
-                      min_h = i->second[0];
-                      min_h_distance = i->second[2];
-                      min_h_intensity = i->second[3];
-                    }
-                    if (i->second[1] > max_v) {
-                      max_v = i->second[1];
-                      max_v_distance = i->second[2];
-                      max_v_intensity = i->second[3];
-                    } 
-                    if (i->second[1] < min_v) {
-                      min_v = i->second[1];
-                      min_v_distance = i->second[2];
-                      min_v_intensity = i->second[3];
-                    }
-                    if (i->second[2] > max_d) {
-                      max_d = i->second[2];
-                    } 
-                    if (i->second[2] < min_d) {
-                      min_d = i->second[2];
-                    }
+              
+              // Get fov min_h data
+              if (i == comp_scan.begin()) {
+                fov_min_h = i->second[0];
+                fov_min_h_d = i->second[2];
+                fov_min_h_i = i->second[3];
+              }
+
+              // Get fov max_h data
+              if (i == comp_scan.end()) {
+                fov_max_h = i->second[0];
+                fov_max_h_d = i->second[2];
+                fov_max_h_i = i->second[3];
+              }
+              
+              // Get fov min_v data
+              if (i == comp_scan.begin()) {
+                fov_min_v = i->second[1];
+                fov_min_v_d = i->second[2];
+                fov_max_v_i = i->second[3];
+              }
+              // Get fov max_v data
+              if (i == comp_scan.end()) {
+                fov_max_v = i->second[1];
+                fov_max_v_d = i->second[2];
+                fov_max_v_i = i->second[3];
+              }
+
+              // Get center data
+              //if (i->h > -0.0015 && i->h < 0.0015 && i->v == -0.165195){
+              if (i->second[0]>-0.005 && i->second[0] <0.005 && i->second[1] == -0.165195) {
+                fov_center_d = i->second[2];
+                fov_center_i = i->second[3];
+              }
+
+              // Get exclusion zone data
+              if (base_scan.find(i->first) != base_scan.end()) {
+                double distance = base_scan.find(i->first)->second[2];                  
+                if (std::abs(i->second[2] - distance) > distance *0.04) {
+                  count++;
+                  if (i->second[0] > max_h) {
+                    max_h = i->second[0];
+                    max_h_distance = i->second[2];
+                    max_h_intensity = i->second[3];
+                  } 
+                  if (i->second[0] < min_h) {
+                    min_h = i->second[0];
+                    min_h_distance = i->second[2];
+                    min_h_intensity = i->second[3];
+                  }
+                  if (i->second[1] > max_v) {
+                    max_v = i->second[1];
+                    max_v_distance = i->second[2];
+                    max_v_intensity = i->second[3];
+                  } 
+                  if (i->second[1] < min_v) {
+                    min_v = i->second[1];
+                    min_v_distance = i->second[2];
+                    min_v_intensity = i->second[3];
+                  }
+                  if (i->second[2] > max_d) {
+                    max_d = i->second[2];
+                  } 
+                  if (i->second[2] < min_d) {
+                    min_d = i->second[2];
                   }
                 }
+              }
             }
 
             // Switching max and min
             // Right of center is negative, left of center is positive
+            std::cout << "count: " << count << ", min_h " << min_h << ", max_h " << max_h << ", fov_min_h " <<fov_min_h<< ", fov_max_h " <<fov_max_h<< std::endl;
             auto temp = min_h;
             min_h = max_h*-1;
             max_h = temp*-1;
-            
+            temp = fov_min_h;
+            fov_min_h = fov_max_h*-1;
+            fov_max_h = temp*-1;
+            std::cout << "count: " << count << ", min_h " << min_h << ", max_h " << max_h << ", fov_min_h " <<fov_min_h<< ", fov_max_h " <<fov_max_h<< std::endl;
 
             // Margin setup
             double margine_x = 0; // Margine width in meters
             double margine_y = 0;
-            double max_vm = max_v+0.0567+atan(margine_y/max_v_distance); // add angle (0.0542 radians, 3 degrees) to protect the space before next empty ring and add margin angle in radians
+            double max_vm = max_v+0.0567+atan(margine_y/max_v_distance); // add angle (0.0567 radians, 3.25 degrees) to protect the space before next empty ring and add margin angle in radians
             double min_vm = min_v-0.0567-atan(margine_y/min_v_distance); //-0.0567
 
 
@@ -438,8 +493,8 @@ namespace quanergy
             double min_vt = atan((offset_y+min_v_distance*sin(min_vm))/(min_v_distance*cos(min_vm)));
             double max_yc = 191*(atan((offset_y+max_v_distance*sin(max_v))/(max_v_distance*cos(max_v)))); 
             double min_yc = 191*(atan((offset_y+min_v_distance*sin(min_v))/(min_v_distance*cos(min_v))));
-            double max_xc = max_h*-191;
-            double min_xc = min_h*-191;
+            double max_xc = max_h*191;
+            double min_xc = min_h*191;
             double avg_xc = min_xc+((max_xc-min_xc)/2);
             double avg_yc = min_yc+((max_yc-min_yc)/2);
             
@@ -447,8 +502,8 @@ namespace quanergy
             // Projector field of view is roughly -30 t0 +30 degrees
             // Beyond software window clipout effect value range is -100 to 100
             // x = (h+margine)*(180\PI)*(100\30)
-            double max_x = (max_h+margine_x)*-191;
-            double min_x = (min_h-margine_x)*-191;
+            double max_x = (max_h+margine_x)*191;
+            double min_x = (min_h-margine_x)*191;
             double min_y;
             if (min_v < -0.3) {min_y = -110;}
             if (min_v > -0.3) {min_y = min_vt*191;} 
@@ -456,24 +511,47 @@ namespace quanergy
             if (max_v > 0.04) {max_y = 110;}
             if (max_v < 0.04) {max_y = max_vt*191;} 
 
-            //std::cout << "count: " << count << ", max_h: " << max_h << ", min_h: " << min_h << ", max_v: " << max_v << ", min_v: " << min_v << ", max_d: " << max_d << ", min_d: " << min_d << std::endl;
-
+            //std::cout << "count: " << count << ", fov_max_v: " << fov_max_v << ", fov_min_v: " << fov_min_v<< ", fov_max_v_distance: " << fov_max_v_distance << ", fov_min_v_distance: " << fov_min_v_distance << std::endl;
+            //std::cout << "count: " << count << ", fov_centter_d " << fov_center_d << ", max_v " << max_v << std::endl;
+            
             UdpTransmitSocket transmitSocket( IpEndpointName( ADDRESS, SENDING_PORT ) );
-            //double BPM = -10;
             char buffer[OUTPUT_BUFFER_SIZE];
             osc::OutboundPacketStream p( buffer, OUTPUT_BUFFER_SIZE );
             
             p << osc::BeginBundleImmediate
+                //PROTECT 1
+                // << osc::BeginMessage("/b/IPS/PROTECT_1.Effect.0/Keys.0/Value1") << (float)(min_x)
+                // << osc::EndMessage
+                // << osc::BeginMessage("/b/IPS/PROTECT_1.Effect.0/Keys.0/Value2") << (float)(max_x)
+                // << osc::EndMessage
+                // << osc::BeginMessage("/b/IPS/PROTECT_1.Effect.0/Keys.0/Value3") << (float)(min_y)
+                // << osc::EndMessage
+                // << osc::BeginMessage("/b/IPS/PROTECT_1.Effect.0/Keys.0/Value4") << (float)(max_y)
+                // << osc::EndMessage
                 
-                << osc::BeginMessage("/b/IPS/LIDAR_PROTECT.Effect.0/Keys.0/Value1") << (float)(max_x)
+                // Field of view data
+                << osc::BeginMessage("/b/VARIABLES.fov_min_h") << (float)(fov_min_h)
                 << osc::EndMessage
-                << osc::BeginMessage("/b/IPS/LIDAR_PROTECT.Effect.0/Keys.0/Value2") << (float)(min_x)
+                //<< osc::BeginMessage("/b/VARIABLES.fov_min_h_d") << (float)(fov_min_h_d)
+                // << osc::EndMessage
+                // << osc::BeginMessage("/b/VARIABLES.fov_min_h_i") << (float)(fov_min_h_i)
+                // << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.fov_max_h") << (float)(fov_max_h)
                 << osc::EndMessage
-                << osc::BeginMessage("/b/IPS/LIDAR_PROTECT.Effect.0/Keys.0/Value3") << (float)(min_y)
+                //<< osc::BeginMessage("/b/VARIABLES.fov_max_h_d") << (float)(fov_max_h_d)
+                // << osc::EndMessage
+                // << osc::BeginMessage("/b/VARIABLES.fov_max_h_i") << (float)(fov_max_h_i)
+                // << osc::EndMessage
+                //<< osc::BeginMessage("/b/VARIABLES.fov_min_v") << (float)(fov_min_v)
+                // << osc::EndMessage
+                //<< osc::BeginMessage("/b/VARIABLES.fov_max_v") << (float)(fov_max_v)
+                // << osc::EndMessage
+                << osc::BeginMessage("/b/SCANFIELD.fov_center_d") << (float)(fov_center_d)
                 << osc::EndMessage
-                << osc::BeginMessage("/b/IPS/LIDAR_PROTECT.Effect.0/Keys.0/Value4") << (float)(max_y)
-                << osc::EndMessage
-                
+                // << osc::BeginMessage("/b/VARIABLES.fov_center_i") << (float)(fov_center_i)
+                // << osc::EndMessage
+
+                // Exclusion zone data
                 << osc::BeginMessage("/b/CALIBRATIONDYNAMIC.PositionX") << (int)(max_xc)
                 << osc::EndMessage
                 << osc::BeginMessage("/b/CALIBRATIONDYNAMIC.PositionY") << (int)(max_yc)
@@ -502,9 +580,6 @@ namespace quanergy
                 << osc::EndMessage
                 << osc::BeginMessage("/b/VARIABLES.origin_intensity") << (origin_intensity)
                 << osc::EndMessage
-
-                //<< osc::BeginMessage("/b/VARIABLES.origin_distance") << (float)(origin_distance)
-                //<< osc::EndMessage
                 << osc::EndBundle;
             
             transmitSocket.Send( p.Data(), p.Size() );
