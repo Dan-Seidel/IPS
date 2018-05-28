@@ -11,7 +11,7 @@
 #include <thread>
 
 VisualizerModule::VisualizerModule()
-  : viewer_("Cloud Viewer")
+  : viewer_("Cloud Viewer 2")
 {
   /// basic visualization setup
 #if (PCL_MAJOR_VERSION == 1 && PCL_MINOR_VERSION == 7 && PCL_REVISION_VERSION <= 2)

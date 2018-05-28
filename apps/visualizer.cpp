@@ -25,6 +25,17 @@
 // conversion module from polar to Cartesian
 #include <quanergy/modules/polar_to_cart_converter.h>
 
+#include <quanergy/osc/OscTypes.h>
+#include <quanergy/ip/UdpSocket.h>
+#include <quanergy/ip/IpEndpointName.h>
+#include <quanergy/osc/OscReceivedElements.h>
+#include <quanergy/osc/OscPacketListener.h>
+
+#define ADDRESS "127.0.0.1"
+#define RECEIVING_PORT 7000
+#define SENDING_PORT 8000
+#define OUTPUT_BUFFER_SIZE 1024
+
 namespace
 {
   static const std::string MANUAL_CORRECT{"--manual-correct"};
@@ -61,6 +72,40 @@ typedef quanergy::client::PacketParserModule<ParserType> ParserModuleType;
 typedef quanergy::calibration::EncoderAngleCalibration CalibrationType;
 typedef quanergy::client::PolarToCartConverter ConverterType;
 
+class ExamplePacketListener : public osc::OscPacketListener {
+protected:
+
+    virtual void ProcessMessage( const osc::ReceivedMessage& m, 
+        const IpEndpointName& remoteEndpoint )
+    {
+        (void) remoteEndpoint; // suppress unused parameter warning
+
+        try {
+            // example of parsing single messages. osc::OsckPacketListener
+            // handles the bundle traversal.
+            
+            if ( std::strcmp( m.AddressPattern(), "/b/IPS.LIDAR_START.Value" ) == 0 ) {
+                osc::ReceivedMessageArgumentStream args = m.ArgumentStream();
+                float a3;
+                args >> a3 >> osc::EndMessage;
+                
+                if (a3 == 1) {
+                    std::system("~/quanergy_client/build/visualizer --host 192.168.88.12 &");
+                } else if (a3 == 0) {
+                    std::system("killall visualizer");
+                } else {
+
+                }
+            }
+        } catch( osc::Exception& e ) {
+            // any parsing errors such as unexpected argument types, or 
+            // missing arguments get thrown as exceptions.
+            std::cout << "error while parsing message: "
+                << m.AddressPattern() << ": " << e.what() << "\n";
+        }
+    }
+};
+
 int main(int argc, char** argv)
 {
   int max_num_args = 8;
@@ -81,7 +126,7 @@ int main(int argc, char** argv)
   ClientType client(host, port, 100);
   ParserModuleType parser;
   ConverterType converter;
-  VisualizerModule visualizer;
+  //VisualizerModule visualizer;
 
   CalibrationType calibrator;
 
@@ -126,11 +171,11 @@ int main(int argc, char** argv)
     connections.push_back(parser.connect([&converter](const ParserModuleType::ResultType& pc){ converter.slot(pc); }));
   }
 
-  connections.push_back(converter.connect([&visualizer](const ConverterType::ResultType& pc){ visualizer.slot(pc); }));
+  //connections.push_back(converter.connect([&visualizer](const ConverterType::ResultType& pc){ visualizer.slot(pc); }));
 
   // run the client with the calibrator and wait for a signal from the
   // calibrator that a successful calibration has been performed
-  std::thread client_thread([&client, &visualizer]
+  std::thread client_thread([&client/*, &visualizer*/]
   {
     try
     {
@@ -140,12 +185,12 @@ int main(int argc, char** argv)
     catch (std::exception& e)
     {
       std::cerr << "Terminating after catching exception: " << e.what() << std::endl;
-      visualizer.stop();
+      //visualizer.stop();
     }
   });
     
   // start visualizer (blocks until stopped)
-  visualizer.run();
+  //visualizer.run();
 
   // clean up
   client.stop();
