@@ -17,47 +17,10 @@
 #include <quanergy/osc/OscTypes.h>
 #include <quanergy/ip/UdpSocket.h>
 #include <quanergy/ip/IpEndpointName.h>
-#include <quanergy/osc/OscReceivedElements.h>
-#include <quanergy/osc/OscPacketListener.h>
 
 #define ADDRESS "127.0.0.1"
-#define RECEIVING_PORT 7000
 #define SENDING_PORT 8000
 #define OUTPUT_BUFFER_SIZE 1024
-
-class ExamplePacketListener : public osc::OscPacketListener {
-protected:
-
-    virtual void ProcessMessage( const osc::ReceivedMessage& m, 
-        const IpEndpointName& remoteEndpoint )
-    {
-        (void) remoteEndpoint; // suppress unused parameter warning
-
-        try {
-            // example of parsing single messages. osc::OsckPacketListener
-            // handles the bundle traversal.
-            
-            if ( std::strcmp( m.AddressPattern(), "/b/IPS.LIDAR_START.Value" ) == 0 ) {
-                osc::ReceivedMessageArgumentStream args = m.ArgumentStream();
-                float a3;
-                args >> a3 >> osc::EndMessage;
-                
-                if (a3 == 1) {
-                    std::system("~/quanergy_client/build/visualizer --host 192.168.88.12 &");
-                } else if (a3 == 0) {
-                    std::system("killall visualizer");
-                } else {
-
-                }
-            }
-        } catch( osc::Exception& e ) {
-            // any parsing errors such as unexpected argument types, or 
-            // missing arguments get thrown as exceptions.
-            std::cout << "error while parsing message: "
-                << m.AddressPattern() << ": " << e.what() << "\n";
-        }
-    }
-};
 
 namespace quanergy
 {
@@ -259,7 +222,6 @@ namespace quanergy
           static float origin_distance = 0;
           static float origin_intensity = 0;
 
-
           if (visits_here == 5) {
             // Send message to start communication via osc
             UdpTransmitSocket transmitSocket( IpEndpointName( ADDRESS, SENDING_PORT ) );
@@ -270,11 +232,14 @@ namespace quanergy
             p << osc::BeginBundleImmediate
                 // << osc::BeginMessage( "/b/IPS.LIDAR_START.MaxVal" ) << 1 << osc::EndMessage
                 // << osc::EndBundle;
-                << osc::BeginMessage("/b/IPS.LIDAR_START.Value") << 1
+                << osc::BeginMessage("/b/IPS.LIDAR_START.Value") << 0
+                << osc::EndMessage
+                << osc::BeginMessage("/b/IPS.LIDAR_ACTIVATE.Value") << 0
                 << osc::EndMessage;
-            
+
             transmitSocket.Send( p.Data(), p.Size() );
 
+            // Get baseline scan
             for (PointCloudHVDIR::const_iterator i = current_cloud_->begin(); i != current_cloud_->end(); ++i) {
               std::vector<double> v;
               v.push_back(i->h);
@@ -288,20 +253,6 @@ namespace quanergy
                 std::cout << "setting baseline origin intensity" << std::endl;
                 origin_baseline_intensity = i->intensity;
                 origin_baseline_distance = i->d;
-
-                UdpTransmitSocket transmitSocket( IpEndpointName( ADDRESS, SENDING_PORT ) );
-                  char buffer[OUTPUT_BUFFER_SIZE];
-                osc::OutboundPacketStream p( buffer, OUTPUT_BUFFER_SIZE );
-                p << osc::BeginBundleImmediate
-                    //<< osc::BeginMessage("/b/Beam.0.Power") << (int)(40)
-                    //<< osc::EndMessage
-                    //<< osc::BeginMessage("/b/VARIABLES.origin_baseline_distance") << (origin_baseline_distance)
-                    //<< osc::EndMessage
-                    //<< osc::BeginMessage("/b/VARIABLES.origin_baseline_intensity") << (origin_baseline_intensity)
-                    //<< osc::EndMessage
-                  << osc::EndBundle;
-            
-                  transmitSocket.Send( p.Data(), p.Size() );
               }
             }
           }
@@ -381,7 +332,7 @@ namespace quanergy
             double max_v_intensity;
             double min_v_intensity;
 
-            //Define feild of view variables
+            // Define field of view variables
             double fov_min_h;
             double fov_min_h_d=1;
             double fov_min_h_i;
@@ -481,7 +432,7 @@ namespace quanergy
             std::cout << "count: " << count << ", min_h " << min_h << ", max_h " << max_h << ", fov_min_h " <<fov_min_h<< ", fov_max_h " <<fov_max_h<< std::endl;
 
             // Margin setup
-            double margine_x = 0; // Margine width in meters
+            double margine_x = 0; // Margin width in meters
             double margine_y = 0;
             double max_vm = max_v+0.0567+atan(margine_y/max_v_distance); // add angle (0.0567 radians, 3.25 degrees) to protect the space before next empty ring and add margin angle in radians
             double min_vm = min_v-0.0567-atan(margine_y/min_v_distance); //-0.0567
@@ -583,12 +534,6 @@ namespace quanergy
                 << osc::EndBundle;
             
             transmitSocket.Send( p.Data(), p.Size() );
-
-            // IpsPacketListener listener;
-            // UdpListeningReceiveSocket s(
-            //   IpEndpointName( IpEndpointName::ANY_ADDRESS, RECEIVING_PORT ),
-            //   &listener
-            // );
 
               /*
               std::cout << "comparison original -------------------------------------";

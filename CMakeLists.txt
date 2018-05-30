@@ -92,6 +92,7 @@ set(client_SRCS
   src/osc/OscOutboundPacketStream.cpp
   src/osc/OscTypes.cpp
   src/ip/posix/UdpSocket.cpp
+  src/osc/OscReceivedElements.cpp
   src/ip/IpEndpointName.cpp
   src/ip/posix/NetworkingUtils.cpp
   ${project_HEADERS}
