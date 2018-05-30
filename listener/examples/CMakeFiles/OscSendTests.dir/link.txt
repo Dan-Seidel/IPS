@@ -1,0 +1,1 @@
+/usr/bin/c++    -Wall -Wextra -Wno-long-long -pedantic   CMakeFiles/OscSendTests.dir/tests/OscSendTests.cpp.o  -o OscSendTests -rdynamic liboscpack.a 

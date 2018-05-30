@@ -1,0 +1,1 @@
+/usr/bin/c++    -Wall -Wextra -Wno-long-long -pedantic   CMakeFiles/SimpleSend.dir/SimpleSend.cpp.o  -o SimpleSend -rdynamic liboscpack.a 

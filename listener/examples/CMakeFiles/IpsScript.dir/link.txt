@@ -1,0 +1,1 @@
+/usr/bin/c++    -Wall -Wextra -Wno-long-long -pedantic   CMakeFiles/IpsScript.dir/IpsScript.cpp.o  -o IpsScript -rdynamic liboscpack.a 

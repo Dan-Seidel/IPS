@@ -1,0 +1,10 @@
+/home/dan/oscpack/tags/release_1_1_0/examples/CMakeFiles/IpsScript.dir
+/home/dan/oscpack/tags/release_1_1_0/examples/CMakeFiles/SimpleSend.dir
+/home/dan/oscpack/tags/release_1_1_0/examples/CMakeFiles/rebuild_cache.dir
+/home/dan/oscpack/tags/release_1_1_0/examples/CMakeFiles/SimpleReceive.dir
+/home/dan/oscpack/tags/release_1_1_0/examples/CMakeFiles/OscDump.dir
+/home/dan/oscpack/tags/release_1_1_0/examples/CMakeFiles/edit_cache.dir
+/home/dan/oscpack/tags/release_1_1_0/examples/CMakeFiles/OscSendTests.dir
+/home/dan/oscpack/tags/release_1_1_0/examples/CMakeFiles/OscReceiveTest.dir
+/home/dan/oscpack/tags/release_1_1_0/examples/CMakeFiles/oscpack.dir
+/home/dan/oscpack/tags/release_1_1_0/examples/CMakeFiles/OscUnitTests.dir
