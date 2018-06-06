@@ -217,24 +217,31 @@ namespace quanergy
           // BEGINNING OF OUR CODE
 
           static std::unordered_map<std::string, std::vector<double>> base_scan = {};
-          static std::unordered_map<std::string, std::vector<double>> comp_scan = {};
+          std::unordered_map<std::string, std::vector<double>> comp_scan = {};
           static int visits_here = 0;
           static float origin_baseline_distance = 0;
           static float origin_baseline_intensity = 0;
           static float origin_distance = 0;
           static float origin_intensity = 0;
 
+          static int base_scans_captured = 0;
+
           std::ifstream file("../../setBaseline.txt");
 
           if (file) {
+            int total_points = 0;
             // Get baseline scan
             for (PointCloudHVDIR::const_iterator i = current_cloud_->begin(); i != current_cloud_->end(); ++i) {
-              std::vector<double> v;
-              v.push_back(i->h);
-              v.push_back(i->v);
-              v.push_back(i->d);
-              v.push_back(i->intensity);
-              base_scan[std::to_string(floor(i->h * 500 + 0.005) / 500) + std::to_string(floor(i->v * 500 + 0.005) / 500)] = v;
+              ++total_points;
+              if (i->d > 0.1 && i->d < 500) {
+                std::vector<double> v;
+                v.push_back(i->h);
+                v.push_back(i->v);
+                v.push_back(i->d);
+                v.push_back(i->intensity);
+                base_scan[std::to_string(floor(i->h * 10000 + 0.005) / 10000) + std::to_string(floor(i->v * 500 + 0.005) / 500)] = v;
+                //std::cout << i->h << " " << floor(i->h * 10000 + 0.005) / 10000 << std::endl;
+              }            
 
               // Get intensity of origin
               if (i->h > -0.0010 && i->h < 0.0010 && i->v == 0) {
@@ -243,25 +250,42 @@ namespace quanergy
                 origin_baseline_distance = i->d;
               }
             }
-            std::remove("../../setBaseline.txt");
+            ++base_scans_captured;
+            //std::cout << base_scans_captured << " base scans captured" << std::endl;
+            if (base_scans_captured > 100) {
+              std::remove("../../setBaseline.txt");
+              /*if (total_points != 0) {
+                std::cout << base_scan.size() / (double)total_points * 100 << "%" << std::endl;
+              }*/
+              base_scans_captured = 0;
+              //std::cout << "done with base scan capturing" << std::endl;
+            }
           }
 
           if (visits_here > 5) {
+            int total_points = 0;
             // Get comparison scan
             for (PointCloudHVDIR::const_iterator i = current_cloud_->begin(); i != current_cloud_->end(); ++i) {
-              std::vector<double> v;
-              v.push_back(i->h);
-              v.push_back(i->v);
-              v.push_back(i->d);
-              v.push_back(i->intensity);
-              comp_scan[std::to_string(floor(i->h * 500 + 0.005) / 500) + std::to_string(floor(i->v * 500 + 0.005) / 500)] = v;
+              ++total_points;
+              if (i->d > 0.1 && i->d < 500) {
+                std::vector<double> v;
+                v.push_back(i->h);
+                v.push_back(i->v);
+                v.push_back(i->d);
+                v.push_back(i->intensity);
+                comp_scan[std::to_string(floor(i->h * 10000 + 0.005) / 10000) + std::to_string(floor(i->v * 500 + 0.005) / 500)] = v;
+              }
 
               // If origin intensity has changed more than 10% - do something
               if (i->h > -0.0015 && i->h < 0.0015 && i->v > -0.0015 && i->v < 0.0015) {
                 origin_distance = i->d;
                 origin_intensity = i->intensity;
               }
-            }
+            }          
+            /*if (total_points != 0) {
+              std::cout << comp_scan.size() << " " << (double)total_points << std::endl;
+              std::cout << comp_scan.size() / (double)total_points * 100 << "%" << std::endl;
+            }*/
               
             // Defining Exlusion Zone variables
             int count = 0;
@@ -381,6 +405,9 @@ namespace quanergy
                     min_d = i->second[2];
                   }
                 }
+                //std::cout << "found" << std::endl;
+              } else {
+                //std::cout << "not found" << std::endl;
               }
             }
 
