@@ -239,8 +239,9 @@ namespace quanergy
                 v.push_back(i->v);
                 v.push_back(i->d);
                 v.push_back(i->intensity);
-                base_scan[std::to_string(floor(i->h * 10000 + 0.005) / 10000) + std::to_string(floor(i->v * 500 + 0.005) / 500)] = v;
-                //std::cout << i->h << " " << floor(i->h * 10000 + 0.005) / 10000 << std::endl;
+                v.push_back(i->ring);
+                base_scan[std::to_string(floor(i->h * 10000) / 10000) + std::to_string(floor(i->v * 500 + 0.005) / 500)] = v;
+                //std::cout << i->h << " " << floor(i->h * 10000) / 10000 << std::endl;
               }            
 
               // Get intensity of origin
@@ -269,11 +270,21 @@ namespace quanergy
               ++total_points;
               if (i->d > 0.1 && i->d < 500) {
                 std::vector<double> v;
+                //std::cout << v.size() << " - 0" << std::endl;
                 v.push_back(i->h);
+                //std::cout << v.size() << " - 1" << std::endl;
+                //for (int i = 0; i < 2; ++i) { std::cout << v[i] << ", "; } std::cout << std::endl;
                 v.push_back(i->v);
-                v.push_back(i->d);
+                //std::cout << v.size() << " - 2" << std::endl;
+                //for (int i = 0; i < 3; ++i) { std::cout << v[i] << ", "; } std::cout << std::endl;
+                v.push_back(i->d);           
+                //std::cout << v.size() << " - 3" << std::endl;
+                //for (int i = 0; i < 4; ++i) { std::cout << v[i] << ", "; } std::cout << std::endl;
                 v.push_back(i->intensity);
-                comp_scan[std::to_string(floor(i->h * 10000 + 0.005) / 10000) + std::to_string(floor(i->v * 500 + 0.005) / 500)] = v;
+                v.push_back(i->ring);
+                //std::cout << v.size() << " - 5" << std::endl;
+                //for (int i = 0; i < 5; ++i) { std::cout << v[i] << ", "; } std::cout << std::endl;                  
+                comp_scan[std::to_string(floor(i->h * 10000) / 10000) + std::to_string(floor(i->v * 500 + 0.005) / 500)] = v;
               }
 
               // If origin intensity has changed more than 10% - do something
@@ -363,6 +374,7 @@ namespace quanergy
 
               // Get ring 3 center point
               if (i->second[0] > -0.005 && i->second[0] < 0.005 && i->second[4] == 3) {
+                //std::cout << "h: " << i->second[0] << ", ring: " << i->second[4] << ", d: " << i->second[2] << std::endl;
                 fov_center3_d = i->second[2];
                 fov_center3_i = i->second[3];
               }
@@ -410,6 +422,8 @@ namespace quanergy
                 //std::cout << "not found" << std::endl;
               }
             }
+            std::cout << origin_distance << " " << fov_center7_d << " " << fov_center6_d << " " << fov_center3_d << " " << fov_center0_d << std::endl;
+
 
             // Switching max and min
             // Right of center is negative, left of center is positive
@@ -482,21 +496,21 @@ namespace quanergy
                 // << osc::EndMessage
 
                 // Send ring center data
-                // << osc::BeginMessage("/b/VARIABLES.fov_center7_d") << (float)(fov_center_d)
+                << osc::BeginMessage("/b/VARIABLES.fov_center7_d") << (float)(fov_center7_d)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.fov_center7_i") << (float)(fov_center7_i)
+                << osc::EndMessage
+                // << osc::BeginMessage("/b/VARIABLES.fov_center6_d") << (float)(fov_center6_d)
                 // << osc::EndMessage
-                // << osc::BeginMessage("/b/VARIABLES.fov_center7_i") << (float)(fov_center_i)
+                // << osc::BeginMessage("/b/VARIABLES.fov_center6_i") << (float)(fov_center6_i)
                 // << osc::EndMessage
-                // << osc::BeginMessage("/b/VARIABLES.fov_center6_d") << (float)(fov_center_d)
+                // << osc::BeginMessage("/b/VARIABLES.fov_center3_d") << (float)(fov_center3_d)
                 // << osc::EndMessage
-                // << osc::BeginMessage("/b/VARIABLES.fov_center6_i") << (float)(fov_center_i)
+                // << osc::BeginMessage("/b/VARIABLES.fov_center3_i") << (float)(fov_center3_i)
                 // << osc::EndMessage
-                // << osc::BeginMessage("/b/VARIABLES.fov_center3_d") << (float)(fov_center_d)
-                // << osc::EndMessage
-                // << osc::BeginMessage("/b/VARIABLES.fov_center3_i") << (float)(fov_center_i)
-                // << osc::EndMessage
-                // << osc::BeginMessage("/b/VARIABLES.fov_center0_d") << (float)(fov_center_d)
-                // << osc::EndMessage
-                // << osc::BeginMessage("/b/VARIABLES.fov_center0_i") << (float)(fov_center_i)
+                << osc::BeginMessage("/b/VARIABLES.fov_center0_d") << (float)(fov_center0_d)
+                << osc::EndMessage
+                // << osc::BeginMessage("/b/VARIABLES.fov_center0_i") << (float)(fov_center0_i)
                 // << osc::EndMessage
 
                 // Exclusion zone data
