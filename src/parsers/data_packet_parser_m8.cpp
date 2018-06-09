@@ -215,9 +215,8 @@ namespace quanergy
           }
 
           // BEGINNING OF OUR CODE
-
           static std::unordered_map<std::string, std::vector<double>> base_scan = {};
-          std::unordered_map<std::string, std::vector<double>> comp_scan = {};
+          static std::unordered_map<std::string, std::vector<double>> comp_scan = {};
           static int visits_here = 0;
           static float origin_baseline_distance = 0;
           static float origin_baseline_intensity = 0;
@@ -265,26 +264,42 @@ namespace quanergy
 
           if (visits_here > 5) {
             int total_points = 0;
+            int updated = 0, created = 0;
             // Get comparison scan
             for (PointCloudHVDIR::const_iterator i = current_cloud_->begin(); i != current_cloud_->end(); ++i) {
               ++total_points;
+              // this conditional throws out nan points
               if (i->d > 0.1 && i->d < 500) {
-                std::vector<double> v;
-                //std::cout << v.size() << " - 0" << std::endl;
-                v.push_back(i->h);
-                //std::cout << v.size() << " - 1" << std::endl;
-                //for (int i = 0; i < 2; ++i) { std::cout << v[i] << ", "; } std::cout << std::endl;
-                v.push_back(i->v);
-                //std::cout << v.size() << " - 2" << std::endl;
-                //for (int i = 0; i < 3; ++i) { std::cout << v[i] << ", "; } std::cout << std::endl;
-                v.push_back(i->d);           
-                //std::cout << v.size() << " - 3" << std::endl;
-                //for (int i = 0; i < 4; ++i) { std::cout << v[i] << ", "; } std::cout << std::endl;
-                v.push_back(i->intensity);
-                v.push_back(i->ring);
-                //std::cout << v.size() << " - 5" << std::endl;
-                //for (int i = 0; i < 5; ++i) { std::cout << v[i] << ", "; } std::cout << std::endl;                  
-                comp_scan[std::to_string(floor(i->h * 10000) / 10000) + std::to_string(floor(i->v * 500 + 0.005) / 500)] = v;
+                //std::vector<double> v = comp_scan[std::to_string(floor(i->h * 10000) / 10000) + std::to_string(floor(i->v * 500 + 0.005) / 500)];
+                std::string key = std::to_string(floor(i->h * 10000) / 10000) + std::to_string(floor(i->v * 500 + 0.005) / 500);
+                if (comp_scan.find(key) != comp_scan.end()) {
+                  //std::cout << v[2] << " - " << i->d << std::endl;
+                  comp_scan[key][2] = i->d;
+                  comp_scan[key][3] = i->intensity;
+                  //comp_scan->second[5] = visits_here;                  
+                  //std::cout << "updating timestamp from " << v[5] << " to " << visits_here << std::endl;
+                  /*updated++;
+                  if (v[0] > -0.005 && v[0] < 0.005 && v[4] == 3) {
+                    std::cout << "updating a point that should update fov_center3, from " << v[2] << " to " << i->d << std::endl;
+                  }
+                  if (v[0] == 0 && v[4] == 6) {
+                    std::cout << "UPDATE point - h:" << v[0] << ", v:" << v[1] << ", d:" << v[2] << ", i:" << v[3] << ", r:" << v[4] << ", t:" << v[5] << ", i->d: " << i->d << std::endl;
+                  }*/
+                } else {
+                  std::vector<double> v;
+                  v.push_back(i->h);
+                  v.push_back(i->v);
+                  v.push_back(i->d);
+                  v.push_back(i->intensity);
+                  v.push_back(i->ring);
+                  v.push_back(0);
+                  //v.push_back(visits_here);
+                  comp_scan[std::to_string(floor(i->h * 10000) / 10000) + std::to_string(floor(i->v * 500 + 0.005) / 500)] = v;
+                  /*created++;
+                  if (v[0] == 0 && v[4] == 6) {
+                    std::cout << "CREATED point - h:" << v[0] << ", v:" << v[1] << ", d:" << v[2] << ", i:" << v[3] << ", r:" << v[4] << ", t:" << v[5] << std::endl;
+                  }*/
+                }
               }
 
               // If origin intensity has changed more than 10% - do something
@@ -292,7 +307,16 @@ namespace quanergy
                 origin_distance = i->d;
                 origin_intensity = i->intensity;
               }
-            }          
+            }
+
+            /*for (auto i = comp_scan.begin(); i != comp_scan.end(); ++i) {
+              if (i->second[0] == 0 && i->second[4] == 6) {
+                std::cout << "PEEKING point - h:" << i->second[0] << ", v:" << i->second[1] << ", d:" << i->second[2] << ", i:" << i->second[3] << ", r:" << i->second[4] << ", t:" << i->second[5] << std::endl;
+              }
+            }*/
+
+            //std::cout << "size: " << comp_scan.size() << ", updated: " << updated << ", created: " << created << std::endl;
+        
             /*if (total_points != 0) {
               std::cout << comp_scan.size() << " " << (double)total_points << std::endl;
               std::cout << comp_scan.size() / (double)total_points * 100 << "%" << std::endl;
@@ -335,8 +359,20 @@ namespace quanergy
             double fov_center3_d, fov_center3_i;
             double fov_center0_d, fov_center0_i;
 
+
+            //int min_age = 100000;
+
             // Recording exclusion zone and field of view
-            for (auto i = comp_scan.begin(); i != comp_scan.end(); ++i) {
+            for (auto i = comp_scan.begin(); i != comp_scan.end(); ++i) {              
+
+              /*if (i->second[0] == 0 && i->second[4] == 6) {
+                std::cout << "VIEWING point - h:" << i->second[0] << ", v:" << i->second[1] << ", d:" << i->second[2] << ", i:" << i->second[3] << ", r:" << i->second[4] << ", t:" << i->second[5] << std::endl;
+              }*/
+
+              //std::cout << i->second[5] << ", ";
+              //if (i->second[5] < min_age) {
+              //  min_age = i->second[5];
+              //}
               
               // Get fov min_h and min_v data
               if (i == comp_scan.begin()) {
@@ -374,7 +410,7 @@ namespace quanergy
 
               // Get ring 3 center point
               if (i->second[0] > -0.005 && i->second[0] < 0.005 && i->second[4] == 3) {
-                //std::cout << "h: " << i->second[0] << ", ring: " << i->second[4] << ", d: " << i->second[2] << std::endl;
+                //std::cout << "updating fov_center3 from " << fov_center3_d << " to " << i->second[2] << ", h:" << i->second[0] << std::endl;
                 fov_center3_d = i->second[2];
                 fov_center3_i = i->second[3];
               }
@@ -386,44 +422,58 @@ namespace quanergy
               }
 
               // Get exclusion zone data
-              if (base_scan.find(i->first) != base_scan.end()) {
+              if (base_scan.find(i->first) != base_scan.end()) {                
                 double distance = base_scan.find(i->first)->second[2];                  
                 if (std::abs(i->second[2] - distance) > distance *0.04) {
-                  count++;
-                  if (i->second[0] > max_h) {
-                    max_h = i->second[0];
-                    max_h_distance = i->second[2];
-                    max_h_intensity = i->second[3];
-                  } 
-                  if (i->second[0] < min_h) {
-                    min_h = i->second[0];
-                    min_h_distance = i->second[2];
-                    min_h_intensity = i->second[3];
+                  if (i->second[5] < 4) {
+                    i->second[5]++;
                   }
-                  if (i->second[1] > max_v) {
-                    max_v = i->second[1];
-                    max_v_distance = i->second[2];
-                    max_v_intensity = i->second[3];
-                  } 
-                  if (i->second[1] < min_v) {
-                    min_v = i->second[1];
-                    min_v_distance = i->second[2];
-                    min_v_intensity = i->second[3];
+
+                  if (i->second[5] >= 2) {
+                    count++;
+                    if (i->second[0] > max_h) {
+                      max_h = i->second[0];
+                      max_h_distance = i->second[2];
+                      max_h_intensity = i->second[3];
+                    } 
+                    if (i->second[0] < min_h) {
+                      min_h = i->second[0];
+                      min_h_distance = i->second[2];
+                      min_h_intensity = i->second[3];
+                    }
+                    if (i->second[1] > max_v) {
+                      max_v = i->second[1];
+                      max_v_distance = i->second[2];
+                      max_v_intensity = i->second[3];
+                    } 
+                    if (i->second[1] < min_v) {
+                      min_v = i->second[1];
+                      min_v_distance = i->second[2];
+                      min_v_intensity = i->second[3];
+                    }
+                    if (i->second[2] > max_d) {
+                      max_d = i->second[2];
+                    } 
+                    if (i->second[2] < min_d) {
+                      min_d = i->second[2];
+                    }
                   }
-                  if (i->second[2] > max_d) {
-                    max_d = i->second[2];
-                  } 
-                  if (i->second[2] < min_d) {
-                    min_d = i->second[2];
+                } else {                  
+                  if (i->second[5] > 0) {
+                    i->second[5]--;
                   }
                 }
                 //std::cout << "found" << std::endl;
-              } else {
-                //std::cout << "not found" << std::endl;
               }
+              //std::cout << i->second[5] << ", ";
             }
-            std::cout << origin_distance << " " << fov_center7_d << " " << fov_center6_d << " " << fov_center3_d << " " << fov_center0_d << std::endl;
+            //std::cout << std::endl;
 
+
+
+            //std::cout << std::endl << std::endl;
+            //std::cout << "MIN: " << min_age << "---------------------------" << std::endl << std::endl << std::endl;
+            //std::cout << origin_distance << " " << fov_center7_d << " " << fov_center6_d << " " << fov_center3_d << " " << fov_center0_d << std::endl;
 
             // Switching max and min
             // Right of center is negative, left of center is positive
