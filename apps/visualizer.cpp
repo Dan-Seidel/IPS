@@ -81,7 +81,7 @@ int main(int argc, char** argv)
   ClientType client(host, port, 100);
   ParserModuleType parser;
   ConverterType converter;
-  //VisualizerModule visualizer;
+  VisualizerModule visualizer; //
 
   CalibrationType calibrator;
 
@@ -126,11 +126,12 @@ int main(int argc, char** argv)
     connections.push_back(parser.connect([&converter](const ParserModuleType::ResultType& pc){ converter.slot(pc); }));
   }
 
-  //connections.push_back(converter.connect([&visualizer](const ConverterType::ResultType& pc){ visualizer.slot(pc); }));
+  connections.push_back(converter.connect([&visualizer](const ConverterType::ResultType& pc){ visualizer.slot(pc); })); //
 
   // run the client with the calibrator and wait for a signal from the
   // calibrator that a successful calibration has been performed
-  std::thread client_thread([&client/*, &visualizer*/]
+  std::thread client_thread([&client, &visualizer]
+  //std::thread client_thread([&client/*, &visualizer*/]
   {
     try
     {
@@ -140,12 +141,12 @@ int main(int argc, char** argv)
     catch (std::exception& e)
     {
       std::cerr << "Terminating after catching exception: " << e.what() << std::endl;
-      //visualizer.stop();
+      visualizer.stop(); //
     }
   });
     
   // start visualizer (blocks until stopped)
-  //visualizer.run();
+  visualizer.run(); //
 
   // clean up
   client.stop();

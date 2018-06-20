@@ -308,6 +308,7 @@ namespace quanergy
                 origin_intensity = i->intensity;
               }
             }
+            //std::cout << "origin_distance:" << origin_distance << ", origin_intensity:" << origin_intensity << std::endl;
 
             /*for (auto i = comp_scan.begin(); i != comp_scan.end(); ++i) {
               if (i->second[0] == 0 && i->second[4] == 6) {
@@ -352,17 +353,30 @@ namespace quanergy
             double fov_max_v; //= 0.0558;
             double fov_max_v_d=1;
             double fov_max_v_i;
-            double fov_center_d=2;
+            double fov_center_d=1;
             double fov_center_i;
-            double fov_center7_d, fov_center7_i;
-            double fov_center6_d, fov_center6_i;
-            double fov_center3_d, fov_center3_i;
-            double fov_center0_d, fov_center0_i;
+            double fov_center7_d=1, fov_center7_i;
+            double fov_center6_d=1, fov_center6_i;
+            double fov_center4_d=1, fov_center4_i;
+            double fov_center3_d=1, fov_center3_i;
+            double fov_center0_d=1, fov_center0_i;
+
+            //RING V ANGLES ARE CONSTANT
+            double RING_7_v = 0.0557982;
+            double RING_6_v = 0;
+            double RING_5_v = -0.0557982;
+            double RING_4_v = -0.111003;
+            double RING_3_v = -0.165195;
+            double RING_2_v = -0.218009;
+            double RING_1_v = -0.2692;
+            double RING_0_v = -0.318505;
 
 
             //int min_age = 100000;
 
             // Recording exclusion zone and field of view
+            int exclusion_points_count = 0;
+            bool prev_point_differed = false;
             for (auto i = comp_scan.begin(); i != comp_scan.end(); ++i) {              
 
               /*if (i->second[0] == 0 && i->second[4] == 6) {
@@ -408,6 +422,12 @@ namespace quanergy
                 fov_center6_i = i->second[3];
               }
 
+              // Get ring 4 center point
+              if (i->second[0] > -0.005 && i->second[0] < 0.005 && i->second[4] == 4) {
+                fov_center4_d = i->second[2];
+                fov_center4_i = i->second[3];
+              }
+
               // Get ring 3 center point
               if (i->second[0] > -0.005 && i->second[0] < 0.005 && i->second[4] == 3) {
                 //std::cout << "updating fov_center3 from " << fov_center3_d << " to " << i->second[2] << ", h:" << i->second[0] << std::endl;
@@ -421,53 +441,61 @@ namespace quanergy
                 fov_center0_i = i->second[3];
               }
 
-              // Get exclusion zone data
+              // Get exclusion zone data              
               if (base_scan.find(i->first) != base_scan.end()) {                
                 double distance = base_scan.find(i->first)->second[2];                  
-                if (std::abs(i->second[2] - distance) > distance *0.04) {
-                  if (i->second[5] < 4) {
+                if (std::abs(i->second[2] - distance) > distance *0.25) {
+                  if (i->second[5] < 2) {
                     i->second[5]++;
                   }
 
                   if (i->second[5] >= 2) {
-                    count++;
-                    if (i->second[0] > max_h) {
-                      max_h = i->second[0];
-                      max_h_distance = i->second[2];
-                      max_h_intensity = i->second[3];
-                    } 
-                    if (i->second[0] < min_h) {
-                      min_h = i->second[0];
-                      min_h_distance = i->second[2];
-                      min_h_intensity = i->second[3];
-                    }
-                    if (i->second[1] > max_v) {
-                      max_v = i->second[1];
-                      max_v_distance = i->second[2];
-                      max_v_intensity = i->second[3];
-                    } 
-                    if (i->second[1] < min_v) {
-                      min_v = i->second[1];
-                      min_v_distance = i->second[2];
-                      min_v_intensity = i->second[3];
-                    }
-                    if (i->second[2] > max_d) {
-                      max_d = i->second[2];
-                    } 
-                    if (i->second[2] < min_d) {
-                      min_d = i->second[2];
-                    }
+                    std::cout << "c distance:" << i->second[2] << ", b distance:" << distance << "h:" << i->second[0] << "v:" << i->second[1] << std::endl;
+                    if (prev_point_differed == true) {
+                      count++;
+                      if (i->second[0] > max_h) {
+                        max_h = i->second[0];
+                        max_h_distance = i->second[2];
+                        max_h_intensity = i->second[3];
+                      } 
+                      if (i->second[0] < min_h) {
+                        min_h = i->second[0];
+                        min_h_distance = i->second[2];
+                        min_h_intensity = i->second[3];
+                      }
+                      if (i->second[1] > max_v) {
+                        max_v = i->second[1];
+                        max_v_distance = i->second[2];
+                        max_v_intensity = i->second[3];
+                      } 
+                      if (i->second[1] < min_v) {
+                        min_v = i->second[1];
+                        min_v_distance = i->second[2];
+                        min_v_intensity = i->second[3];
+                      }
+                      if (i->second[2] > max_d) {
+                        max_d = i->second[2];
+                      } 
+                      if (i->second[2] < min_d) {
+                        min_d = i->second[2];
+                      }
+                      ++exclusion_points_count;
+                    }                    
+                    prev_point_differed = true;
                   }
                 } else {                  
+                  prev_point_differed = false;
                   if (i->second[5] > 0) {
                     i->second[5]--;
                   }
                 }
                 //std::cout << "found" << std::endl;
               }
-              //std::cout << i->second[5] << ", ";
+              //std::cout << i->second[5] << ", ";              
             }
+            std::cout << "----------------------------------------------" << std::endl;
             //std::cout << std::endl;
+            //std::cout << exclusion_points_count << std::endl;
 
 
 
@@ -520,6 +548,13 @@ namespace quanergy
             //std::cout << "count: " << count << ", fov_max_v: " << fov_max_v << ", fov_min_v: " << fov_min_v<< ", fov_max_v_distance: " << fov_max_v_distance << ", fov_min_v_distance: " << fov_min_v_distance << std::endl;
             //std::cout << "count: " << count << ", fov_centter_d " << fov_center_d << ", max_v " << max_v << std::endl;
             
+            //DETERMINE INTERCEPT ANGLES
+            //Intercept angle = arctangent(distance2*sin(theta)/distance1-distance2*cos(theta))
+            double intercept_h;
+            double intercept_v;
+            intercept_v=atan((fov_center4_d*sin(-RING_4_v))/(fov_center6_d - fov_center4_d*cos(-RING_4_v)))*(180/3.141592);
+            //std::cout << "intercept_v: " << intercept_v << "fov_center6_d: " << fov_center6_d << "fov_center4_d: " << fov_center4_d <<std::endl;
+
             UdpTransmitSocket transmitSocket( IpEndpointName( ADDRESS, SENDING_PORT ) );
             char buffer[OUTPUT_BUFFER_SIZE];
             osc::OutboundPacketStream p( buffer, OUTPUT_BUFFER_SIZE );
@@ -546,6 +581,8 @@ namespace quanergy
                 // << osc::EndMessage
 
                 // Send ring center data
+                << osc::BeginMessage("/b/VARIABLES.intercept_v") << (float)(intercept_v)
+                << osc::EndMessage
                 << osc::BeginMessage("/b/VARIABLES.fov_center7_d") << (float)(fov_center7_d)
                 << osc::EndMessage
                 << osc::BeginMessage("/b/VARIABLES.fov_center7_i") << (float)(fov_center7_i)
@@ -554,6 +591,10 @@ namespace quanergy
                 // << osc::EndMessage
                 // << osc::BeginMessage("/b/VARIABLES.fov_center6_i") << (float)(fov_center6_i)
                 // << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.fov_center4_d") << (float)(fov_center4_d)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.fov_center4_i") << (float)(fov_center4_i)
+                << osc::EndMessage
                 // << osc::BeginMessage("/b/VARIABLES.fov_center3_d") << (float)(fov_center3_d)
                 // << osc::EndMessage
                 // << osc::BeginMessage("/b/VARIABLES.fov_center3_i") << (float)(fov_center3_i)
