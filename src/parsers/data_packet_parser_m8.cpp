@@ -214,7 +214,7 @@ namespace quanergy
                 << ") not reached (" << current_cloud_->size() << ")" << std::endl;
           }
 
-          // BEGINNING OF OUR CODE
+          /////////////////////////// INTERACTIVE PROJECTION SYSTEM CODE/////////////////////////////////
           static std::unordered_map<std::string, std::vector<double>> base_scan = {};
           static std::unordered_map<std::string, std::vector<double>> comp_scan = {};
           static int visits_here = 0;
@@ -222,8 +222,9 @@ namespace quanergy
           static float origin_baseline_intensity = 0;
           static float origin_distance = 0;
           static float origin_intensity = 0;
-
+          
           static int base_scans_captured = 0;
+          static int scan_status = 0;
 
           std::ifstream file("../../setBaseline.txt");
 
@@ -250,15 +251,18 @@ namespace quanergy
                 origin_baseline_distance = i->d;
               }
             }
+            scan_status = 0;
             ++base_scans_captured;
-            //std::cout << base_scans_captured << " base scans captured" << std::endl;
+            std::cout << base_scans_captured << " base scans captured" << std::endl;
             if (base_scans_captured > 100) {
               std::remove("../../setBaseline.txt");
               /*if (total_points != 0) {
                 std::cout << base_scan.size() / (double)total_points * 100 << "%" << std::endl;
               }*/
+              scan_status = 1;
               base_scans_captured = 0;
-              //std::cout << "done with base scan capturing" << std::endl;
+              std::cout << "done with base scan capturing" << std::endl;
+              
             }
           }
 
@@ -341,10 +345,10 @@ namespace quanergy
             double min_v_intensity;
 
             // Define field of view variables
-            double fov_min_h;
+            double fov_min_h=1;
             double fov_min_h_d=1;
             double fov_min_h_i;
-            double fov_max_h;
+            double fov_max_h=-1;
             double fov_max_h_d=1;
             double fov_max_h_i;
             double fov_min_v; //= -0.3185;
@@ -355,11 +359,14 @@ namespace quanergy
             double fov_max_v_i;
             double fov_center_d=1;
             double fov_center_i;
-            double fov_center7_d=1, fov_center7_i;
-            double fov_center6_d=1, fov_center6_i;
-            double fov_center4_d=1, fov_center4_i;
-            double fov_center3_d=1, fov_center3_i;
-            double fov_center0_d=1, fov_center0_i;
+            double fov_center7_v=00.0557982,fov_center7_d=1, fov_center7_i;
+            double fov_center6_v=00.0000000,fov_center6_d=1, fov_center6_i;
+            double fov_center5_v=-0.0557982,fov_center5_d=1, fov_center5_i;
+            double fov_center4_v=-0.1110030,fov_center4_d=1, fov_center4_i;
+            double fov_center3_v=-0.1651950,fov_center3_d=1, fov_center3_i;
+            double fov_center2_v=-0.2180090,fov_center2_d=1, fov_center2_i;
+            double fov_center1_v=-0.2692100,fov_center1_d=1, fov_center1_i;
+            double fov_center0_v=-0.3185050,fov_center0_d=1, fov_center0_i;
 
             //RING V ANGLES ARE CONSTANT
             double RING_7_v = 0.0557982;
@@ -370,6 +377,9 @@ namespace quanergy
             double RING_2_v = -0.218009;
             double RING_1_v = -0.2692;
             double RING_0_v = -0.318505;
+
+            
+            
 
 
             //int min_age = 100000;
@@ -388,7 +398,7 @@ namespace quanergy
               //  min_age = i->second[5];
               //}
               
-              // Get fov min_h and min_v data
+              /*// Get fov min_h and min_v data
               if (i == comp_scan.begin()) {
                 fov_min_h = i->second[0];
                 fov_min_h_d = i->second[2];
@@ -408,6 +418,20 @@ namespace quanergy
                 fov_max_v = i->second[1];
                 fov_max_v_d = i->second[2];
                 fov_max_v_i = i->second[3];
+              }*/
+
+              // Get fov max_h data
+              if (i->second[0]>fov_max_h) {
+                fov_max_h = i->second[0];
+                fov_max_h_d = i->second[2];
+                fov_max_h_i = i->second[3];              
+              }
+
+              // Get fov min_h data
+              if (i->second[0]<fov_min_h) {
+                fov_min_h = i->second[0];
+                fov_min_h_d = i->second[2];
+                fov_min_h_i = i->second[3];
               }
 
               // Get ring 7 center point
@@ -444,13 +468,13 @@ namespace quanergy
               // Get exclusion zone data              
               if (base_scan.find(i->first) != base_scan.end()) {                
                 double distance = base_scan.find(i->first)->second[2];                  
-                if (std::abs(i->second[2] - distance) > distance *0.25) {
+                if (std::abs(i->second[2] - distance) > distance *0.05) {
                   if (i->second[5] < 2) {
                     i->second[5]++;
                   }
 
                   if (i->second[5] >= 2) {
-                    std::cout << "c distance:" << i->second[2] << ", b distance:" << distance << "h:" << i->second[0] << "v:" << i->second[1] << std::endl;
+                    //std::cout << "c distance:" << i->second[2] << ", b distance:" << distance << "h:" << i->second[0] << "v:" << i->second[1] << std::endl;
                     if (prev_point_differed == true) {
                       count++;
                       if (i->second[0] > max_h) {
@@ -493,7 +517,7 @@ namespace quanergy
               }
               //std::cout << i->second[5] << ", ";              
             }
-            std::cout << "----------------------------------------------" << std::endl;
+            //std::cout << "----------------------------------------------" << std::endl;
             //std::cout << std::endl;
             //std::cout << exclusion_points_count << std::endl;
 
@@ -514,6 +538,19 @@ namespace quanergy
             fov_max_h = temp*-1;
             //std::cout << "count: " << count << ", min_h " << min_h << ", max_h " << max_h << ", fov_min_h " <<fov_min_h<< ", fov_max_h " <<fov_max_h<< std::endl;
 
+            //RING V ANGLES TRANSFORMED FOR SENSOR PROJECTOR OFFSET
+            //THE OPTICAL ORIGIN OF THE SENSOR IS 0.195 METERS DIRECTLY ABOVE THE OPTICAL ORIGIN OF THE PROJECTOR
+            double offset_y = 0.195; 
+            fov_center7_v = (atan((offset_y + fov_center7_d * sin(RING_7_v))/(fov_center7_d * cos(RING_7_v))));
+            fov_center6_v = (atan((offset_y + fov_center6_d * sin(RING_6_v))/(fov_center6_d * cos(RING_6_v))));
+            fov_center5_v = (atan((offset_y + fov_center5_d * sin(RING_5_v))/(fov_center5_d * cos(RING_5_v))));
+            fov_center4_v = (atan((offset_y + fov_center4_d * sin(RING_4_v))/(fov_center4_d * cos(RING_4_v))));
+            fov_center3_v = (atan((offset_y + fov_center3_d * sin(RING_3_v))/(fov_center3_d * cos(RING_3_v))));
+            fov_center2_v = (atan((offset_y + fov_center2_d * sin(RING_2_v))/(fov_center2_d * cos(RING_2_v))));
+            fov_center1_v = (atan((offset_y + fov_center1_d * sin(RING_1_v))/(fov_center1_d * cos(RING_1_v))));
+            fov_center0_v = (atan((offset_y + fov_center0_d * sin(RING_0_v))/(fov_center0_d * cos(RING_0_v))));
+            std::cout << "fov_center7_v" << fov_center7_v << std::endl;
+            //std::cout << "c distance:" << i->second[2] << ", b distance:" << distance << "h:" << i->second[0] << "v:" << i->second[1] << std::endl;
             // Margin setup
             // double margine_x = 0; // Margin width in meters
             // double margine_y = 0;
@@ -522,7 +559,7 @@ namespace quanergy
 
 
             // Sensor offset compensation (vertical offset only)
-            double offset_y = 0.195; //height of sensor origin above scanner origin in meters (measured 0.195 +/-0.002)
+            //height of sensor origin above scanner origin in meters (measured 0.195 +/-0.002)
             // double max_vt = atan((offset_y+max_v_distance*sin(max_vm))/(max_v_distance*cos(max_vm))); //v transformed to projector origin
             // double min_vt = atan((offset_y+min_v_distance*sin(min_vm))/(min_v_distance*cos(min_vm)));
             double max_yc = 191*(atan((offset_y+max_v_distance*sin(max_v))/(max_v_distance*cos(max_v)))); 
@@ -553,6 +590,7 @@ namespace quanergy
             double intercept_h;
             double intercept_v;
             intercept_v=atan((fov_center4_d*sin(-RING_4_v))/(fov_center6_d - fov_center4_d*cos(-RING_4_v)))*(180/3.141592);
+              if (intercept_v < 0) {intercept_v=180+intercept_v;}
             //std::cout << "intercept_v: " << intercept_v << "fov_center6_d: " << fov_center6_d << "fov_center4_d: " << fov_center4_d <<std::endl;
 
             UdpTransmitSocket transmitSocket( IpEndpointName( ADDRESS, SENDING_PORT ) );
@@ -560,6 +598,8 @@ namespace quanergy
             osc::OutboundPacketStream p( buffer, OUTPUT_BUFFER_SIZE );
             
             p << osc::BeginBundleImmediate
+                << osc::BeginMessage("/b/IPS.LIDAR_SCAN_STATUS.Visible") << (int)(scan_status) 
+                << osc::EndMessage
                 //PROTECT 1
                 // << osc::BeginMessage("/b/IPS/PROTECT_1.Effect.0/Keys.0/Value1") << (float)(min_x)
                 // << osc::EndMessage
@@ -595,10 +635,10 @@ namespace quanergy
                 << osc::EndMessage
                 << osc::BeginMessage("/b/VARIABLES.fov_center4_i") << (float)(fov_center4_i)
                 << osc::EndMessage
-                // << osc::BeginMessage("/b/VARIABLES.fov_center3_d") << (float)(fov_center3_d)
-                // << osc::EndMessage
-                // << osc::BeginMessage("/b/VARIABLES.fov_center3_i") << (float)(fov_center3_i)
-                // << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.fov_center3_d") << (float)(fov_center3_d)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.fov_center3_i") << (float)(fov_center3_i)
+                << osc::EndMessage
                 << osc::BeginMessage("/b/VARIABLES.fov_center0_d") << (float)(fov_center0_d)
                 << osc::EndMessage
                 // << osc::BeginMessage("/b/VARIABLES.fov_center0_i") << (float)(fov_center0_i)
