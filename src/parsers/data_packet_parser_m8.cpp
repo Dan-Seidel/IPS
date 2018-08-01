@@ -22,7 +22,7 @@
 
 #define ADDRESS "127.0.0.1"
 #define SENDING_PORT 8000
-#define OUTPUT_BUFFER_SIZE 1024
+#define OUTPUT_BUFFER_SIZE 2048
 
 namespace quanergy
 {
@@ -379,7 +379,7 @@ namespace quanergy
             double RING_0_v = -0.318505;
 
             
-            
+                        
 
 
             //int min_age = 100000;
@@ -526,17 +526,7 @@ namespace quanergy
             //std::cout << std::endl << std::endl;
             //std::cout << "MIN: " << min_age << "---------------------------" << std::endl << std::endl << std::endl;
             //std::cout << origin_distance << " " << fov_center7_d << " " << fov_center6_d << " " << fov_center3_d << " " << fov_center0_d << std::endl;
-
-            // Switching max and min
-            // Right of center is negative, left of center is positive
-            //std::cout << "count: " << count << ", min_h " << min_h << ", max_h " << max_h << ", fov_min_h " <<fov_min_h<< ", fov_max_h " <<fov_max_h<< std::endl;
-            auto temp = min_h;
-            min_h = max_h*-1;
-            max_h = temp*-1;
-            temp = fov_min_h;
-            fov_min_h = fov_max_h*-1;
-            fov_max_h = temp*-1;
-            //std::cout << "count: " << count << ", min_h " << min_h << ", max_h " << max_h << ", fov_min_h " <<fov_min_h<< ", fov_max_h " <<fov_max_h<< std::endl;
+            
 
             //RING V ANGLES TRANSFORMED FOR SENSOR PROJECTOR OFFSET
             //THE OPTICAL ORIGIN OF THE SENSOR IS 0.195 METERS DIRECTLY ABOVE THE OPTICAL ORIGIN OF THE PROJECTOR
@@ -549,8 +539,31 @@ namespace quanergy
             fov_center2_v = (atan((offset_y + fov_center2_d * sin(RING_2_v))/(fov_center2_d * cos(RING_2_v))));
             fov_center1_v = (atan((offset_y + fov_center1_d * sin(RING_1_v))/(fov_center1_d * cos(RING_1_v))));
             fov_center0_v = (atan((offset_y + fov_center0_d * sin(RING_0_v))/(fov_center0_d * cos(RING_0_v))));
-            std::cout << "fov_center7_v" << fov_center7_v << std::endl;
-            //std::cout << "c distance:" << i->second[2] << ", b distance:" << distance << "h:" << i->second[0] << "v:" << i->second[1] << std::endl;
+            //std::cout << "fov_center7_v" << fov_center7_v << std::endl;
+
+            //RING V ANGLES CONVERTED FROM RADIANS TO DEGREES
+            fov_center7_v = fov_center7_v*180/3.141592;
+            fov_center6_v = fov_center6_v*180/3.141592;
+            fov_center5_v = fov_center5_v*180/3.141592;
+            fov_center4_v = fov_center4_v*180/3.141592;
+            fov_center3_v = fov_center3_v*180/3.141592;
+            fov_center2_v = fov_center2_v*180/3.141592;
+            fov_center1_v = fov_center1_v*180/3.141592;
+            fov_center0_v = fov_center0_v*180/3.141592;          
+            //std::cout << "fov_center7_v" << fov_center7_v << std::endl;
+            
+
+            // Switching max and min
+            // Right of center is negative, left of center is positive
+            //std::cout << "count: " << count << ", min_h " << min_h << ", max_h " << max_h << ", fov_min_h " <<fov_min_h<< ", fov_max_h " <<fov_max_h<< std::endl;
+            auto temp = min_h;
+            min_h = max_h*-1;
+            max_h = temp*-1;
+            temp = fov_min_h;
+            fov_min_h = fov_max_h*-1;
+            fov_max_h = temp*-1;
+            //std::cout << "count: " << count << ", min_h " << min_h << ", max_h " << max_h << ", fov_min_h " <<fov_min_h<< ", fov_max_h " <<fov_max_h<< std::endl;
+
             // Margin setup
             // double margine_x = 0; // Margin width in meters
             // double margine_y = 0;
@@ -610,7 +623,7 @@ namespace quanergy
                 // << osc::BeginMessage("/b/IPS/PROTECT_1.Effect.0/Keys.0/Value4") << (float)(max_y)
                 // << osc::EndMessage
                 
-                // Send field of view data
+                // SEND FIELD OF VIEW DATA
                 << osc::BeginMessage("/b/VARIABLES.fov_min_h") << (float)(fov_min_h)
                 << osc::EndMessage
                 //<< osc::BeginMessage("/b/VARIABLES.fov_min_h_d") << (float)(fov_min_h_d)
@@ -620,35 +633,55 @@ namespace quanergy
                 //<< osc::BeginMessage("/b/VARIABLES.fov_max_h_d") << (float)(fov_max_h_d)
                 // << osc::EndMessage
 
-                // Send ring center data
-                << osc::BeginMessage("/b/VARIABLES.intercept_v") << (float)(intercept_v)
+                // SEND RING CENTER ANGLE DATA
+                << osc::BeginMessage("/b/VARIABLES.fov_center7_v") << (float)(fov_center7_v)
                 << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.fov_center6_v") << (float)(fov_center6_v)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.fov_center3_v") << (float)(fov_center3_v)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.fov_center0_v") << (float)(fov_center0_v)
+                << osc::EndMessage               
+                
+                
+                // SEND RING CENTER DISTANCE DATA
                 << osc::BeginMessage("/b/VARIABLES.fov_center7_d") << (float)(fov_center7_d)
                 << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.fov_center7_i") << (float)(fov_center7_i)
-                << osc::EndMessage
-                // << osc::BeginMessage("/b/VARIABLES.fov_center6_d") << (float)(fov_center6_d)
-                // << osc::EndMessage
-                // << osc::BeginMessage("/b/VARIABLES.fov_center6_i") << (float)(fov_center6_i)
-                // << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.fov_center4_d") << (float)(fov_center4_d)
-                << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.fov_center4_i") << (float)(fov_center4_i)
-                << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.fov_center6_d") << (float)(fov_center6_d)
+                << osc::EndMessage                
                 << osc::BeginMessage("/b/VARIABLES.fov_center3_d") << (float)(fov_center3_d)
-                << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.fov_center3_i") << (float)(fov_center3_i)
                 << osc::EndMessage
                 << osc::BeginMessage("/b/VARIABLES.fov_center0_d") << (float)(fov_center0_d)
                 << osc::EndMessage
+                
+                // SEND RING CENTER INTENSITY DATA
+                //<< osc::BeginMessage("/b/VARIABLES.fov_center7_i") << (float)(fov_center7_i)
+                //<< osc::EndMessage                
+                // << osc::BeginMessage("/b/VARIABLES.fov_center6_i") << (float)(fov_center6_i)
+                // << osc::EndMessage              
+                //<< osc::BeginMessage("/b/VARIABLES.fov_center3_i") << (float)(fov_center3_i)
+                //<< osc::EndMessage                
                 // << osc::BeginMessage("/b/VARIABLES.fov_center0_i") << (float)(fov_center0_i)
                 // << osc::EndMessage
 
-                // Exclusion zone data
+                //SEND CALIBRATION DATA
+                << osc::BeginMessage("/b/VARIABLES.intercept_v") << (float)(intercept_v)
+                << osc::EndMessage
                 << osc::BeginMessage("/b/CALIBRATIONDYNAMIC.PositionX") << (int)(max_xc)
                 << osc::EndMessage
                 << osc::BeginMessage("/b/CALIBRATIONDYNAMIC.PositionY") << (int)(max_yc)
                 << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.origin_baseline_distance") << (origin_baseline_distance)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.origin_baseline_intensity") << (origin_baseline_intensity)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.origin_distance") << (origin_distance)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.origin_intensity") << (origin_intensity)
+                << osc::EndMessage             
+
+                // Exclusion zone data                
+                
                 << osc::BeginMessage("/b/VARIABLES.max_v") << (float)(max_v)
                 << osc::EndMessage
                 << osc::BeginMessage("/b/VARIABLES.min_v") << (float)(min_v)
@@ -665,15 +698,9 @@ namespace quanergy
                 << osc::EndMessage
                 << osc::BeginMessage("/b/VARIABLES.max_h_d") << (float)(max_h_distance)
                 << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.origin_baseline_distance") << (origin_baseline_distance)
-                << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.origin_baseline_intensity") << (origin_baseline_intensity)
-                << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.origin_distance") << (origin_distance)
-                << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.origin_intensity") << (origin_intensity)
-                << osc::EndMessage
-                << osc::EndBundle;
+
+            << osc::EndBundle;
+                
             
             transmitSocket.Send( p.Data(), p.Size() );
           }
