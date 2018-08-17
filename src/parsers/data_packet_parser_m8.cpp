@@ -224,7 +224,9 @@ namespace quanergy
           static float origin_intensity = 0;
           
           static int base_scans_captured = 0;
-          static int scan_status = 0;
+          
+          static int lidar_status = 2;
+          
 
           std::ifstream file("../../setBaseline.txt");
 
@@ -251,7 +253,7 @@ namespace quanergy
                 origin_baseline_distance = i->d;
               }
             }
-            scan_status = 0;
+            lidar_status = 3;
             ++base_scans_captured;
             std::cout << base_scans_captured << " base scans captured" << std::endl;
             if (base_scans_captured > 100) {
@@ -259,7 +261,7 @@ namespace quanergy
               /*if (total_points != 0) {
                 std::cout << base_scan.size() / (double)total_points * 100 << "%" << std::endl;
               }*/
-              scan_status = 1;
+              lidar_status = 4;
               base_scans_captured = 0;
               std::cout << "done with base scan capturing" << std::endl;
               
@@ -545,6 +547,14 @@ namespace quanergy
             ring1_v = (atan((offset_y + ring1_center_d * sin(ring1_v))/(ring1_center_d * cos(ring1_v))));
             ring0_v = (atan((offset_y + ring0_center_d * sin(ring0_v))/(ring0_center_d * cos(ring0_v))));
 
+            //DETERMINE INTERCEPT ANGLES
+            //Intercept angle = arctangent(distance2*sin(theta)/distance1-distance2*cos(theta))
+            double intercept_h;
+            double intercept_v;
+            intercept_v=atan((ring3_center_d*sin(-ring3_v))/(ring6_center_d - ring3_center_d*cos(-ring3_v)))*(180/3.141592);
+              if (intercept_v < 0) {intercept_v=180+intercept_v;}
+            std::cout << "intercept_v: " << intercept_v << "ring6_center_d: " << ring6_center_d << "ring3_center_d: " << ring3_center_d <<std::endl;
+            
             //RING V ANGLES CONVERTED FROM RADIANS TO DEGREES
             ring7_v = ring7_v*180/3.141592;
             ring6_v = ring6_v*180/3.141592;
@@ -555,7 +565,7 @@ namespace quanergy
             ring1_v = ring1_v*180/3.141592;
             ring0_v = ring0_v*180/3.141592;
 
-            std::cout << "ring7_v = " << ring7_v << ", ring7_center_d = " << ring7_center_d<< "ring0_v = " << ring0_v << ", ring0_center_d = " << ring0_center_d <<  std::endl;           
+            //std::cout << "ring7_v = " << ring7_v << ", ring7_center_d = " << ring7_center_d<< "ring0_v = " << ring0_v << ", ring0_center_d = " << ring0_center_d <<  std::endl;           
 
             // Switching max and min
             // Right of center is negative, left of center is positive
@@ -606,21 +616,17 @@ namespace quanergy
             //std::cout << "count: " << count << ", fov_max_v: " << fov_max_v << ", fov_min_v: " << fov_min_v<< ", fov_max_v_distance: " << fov_max_v_distance << ", fov_min_v_distance: " << fov_min_v_distance << std::endl;
             //std::cout << "count: " << count << ", fov_centter_d " << fov_center_d << ", max_v " << max_v << std::endl;
             
-            //DETERMINE INTERCEPT ANGLES
-            //Intercept angle = arctangent(distance2*sin(theta)/distance1-distance2*cos(theta))
-            double intercept_h;
-            double intercept_v;
-            intercept_v=atan((fov_center4_d*sin(-RING_4_v))/(fov_center6_d - fov_center4_d*cos(-RING_4_v)))*(180/3.141592);
-              if (intercept_v < 0) {intercept_v=180+intercept_v;}
-            //std::cout << "intercept_v: " << intercept_v << "fov_center6_d: " << fov_center6_d << "fov_center4_d: " << fov_center4_d <<std::endl;
-
+            ////SEND MESAGES TO BEYOND SOFTWARE
             UdpTransmitSocket transmitSocket( IpEndpointName( ADDRESS, SENDING_PORT ) );
             char buffer[OUTPUT_BUFFER_SIZE];
             osc::OutboundPacketStream p( buffer, OUTPUT_BUFFER_SIZE );
             
             p << osc::BeginBundleImmediate
-                << osc::BeginMessage("/b/IPS.LIDAR_SCAN_STATUS.Caption") << ("CONNECTED") 
-                << osc::EndMessage
+
+                //SEND LIDAR STATUS
+                << osc::BeginMessage("/b/VARIABLES.lidar_status") << (int)(lidar_status) 
+                << osc::EndMessage                
+
                 //PROTECT 1
                 // << osc::BeginMessage("/b/IPS/PROTECT_1.Effect.0/Keys.0/Value1") << (float)(min_x)
                 // << osc::EndMessage
@@ -632,35 +638,31 @@ namespace quanergy
                 // << osc::EndMessage
                 
                 // SEND FIELD OF VIEW DATA
-                << osc::BeginMessage("/b/LIDARDATA.FOV_MIN_H.Value") << (float)(fov_min_h)
+                << osc::BeginMessage("/b/FIELDOFVIEW.fov_min_h") << (float)(fov_min_h)
                 << osc::EndMessage                
-                << osc::BeginMessage("/b/LIDARDATA.FOV_MAX_H.Value") << (float)(fov_max_h)
-                << osc::EndMessage
-                << osc::BeginMessage("/b/LIDARDATA.FOV_MIN_V.Value") << (float)(ring0_v)
-                << osc::EndMessage                
-                << osc::BeginMessage("/b/LIDARDATA.FOV_MAX_V.Value") << (float)(ring7_v)
+                << osc::BeginMessage("/b/FIELDOFVIEW.fov_max_h") << (float)(fov_max_h)
                 << osc::EndMessage
                 
 
                 // SEND RING CENTER ANGLE DATA
-                << osc::BeginMessage("/b/VARIABLES.ring7_v") << (float)(ring7_v)
+                << osc::BeginMessage("/b/FIELDOFVIEW.ring7_v") << (float)(ring7_v)
                 << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.ring6_v") << (float)(ring6_v)
+                << osc::BeginMessage("/b/FIELDOFVIEW.ring6_v") << (float)(ring6_v)
                 << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.ring3_v") << (float)(ring3_v)
+                << osc::BeginMessage("/b/FIELDOFVIEW.ring3_v") << (float)(ring3_v)
                 << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.ring0_v") << (float)(ring0_v)
+                << osc::BeginMessage("/b/FIELDOFVIEW.ring0_v") << (float)(ring0_v)
                 << osc::EndMessage
 
                 
                 // SEND RING CENTER DISTANCE DATA
-                << osc::BeginMessage("/b/VARIABLES.ring7_center_d") << (float)(ring7_center_d)
+                << osc::BeginMessage("/b/FIELDOFVIEW.ring7_center_d") << (float)(ring7_center_d)
                 << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.ring6_center_d") << (float)(ring6_center_d)
+                << osc::BeginMessage("/b/FIELDOFVIEW.ring6_center_d") << (float)(ring6_center_d)
                 << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.ring3_center_d") << (float)(ring3_center_d)
+                << osc::BeginMessage("/b/FIELDOFVIEW.ring3_center_d") << (float)(ring3_center_d)
                 << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.ring0_center_d") << (float)(ring0_center_d)
+                << osc::BeginMessage("/b/FIELDOFVIEW.ring0_center_d") << (float)(ring0_center_d)
                 << osc::EndMessage
               
                 
