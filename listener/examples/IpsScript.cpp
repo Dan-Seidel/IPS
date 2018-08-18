@@ -18,6 +18,8 @@ using ::__strcmp__;  // avoid error: E2316 '__strcmp__' is not a member of 'std'
 #include "ip/UdpSocket.h"
 #include "osc/OscOutboundPacketStream.h"
 #include <cstdlib>
+#include <string>
+#include <sstream>
 
 #define RECEIVING_PORT 7000
 #define SENDING_PORT 8000
@@ -51,16 +53,41 @@ protected:
                 }
             } else if ( std::strcmp( m.AddressPattern(), "/b/IPS.LIDAR_ACTIVATE.Value" ) == 0 ) {
                 osc::ReceivedMessageArgumentStream args = m.ArgumentStream();
-                float message;
-                args >> message >> osc::EndMessage;
-                
-                if (message == 1) {
-                    // Write to file
-                    std::ofstream file;
-                    file.open("../../setBaseline.txt");
-                    file << 1;
-                    file.close();
-                }
+                float value;
+                args >> value >> osc::EndMessage;
+
+                std::ofstream file;
+                file.open("../../setBaseline.json");
+                file << "{ \"LIDAR_ACTIVATE\":\"";
+                file << value;
+                file << "\"}";
+                file.close();
+
+            } else if ( std::strcmp( m.AddressPattern(), "/b/IPS.MARGIN_HORZONTAL.Value" ) == 0 ) {
+                osc::ReceivedMessageArgumentStream args = m.ArgumentStream();
+                float value;
+                args >> value >> osc::EndMessage;
+
+                //std::cout << "MARGIN_HORZONTAL " << value << std::endl;
+
+                std::ofstream file;
+                file.open("../../setBaseline.json");
+                file << "{ \"MARGIN_HORZONTAL\":\"";
+                file << value;
+                file << "\"}";
+                file.close();
+            } else if ( std::strcmp( m.AddressPattern(), "/b/IPS.MARGIN_VERTICAL.Value" ) == 0 ) {                osc::ReceivedMessageArgumentStream args = m.ArgumentStream();
+                float value;
+                args >> value >> osc::EndMessage;
+
+                //std::cout << "MARGIN_VERTICAL " << value << std::endl;
+
+                std::ofstream file;
+                file.open("../../setBaseline.json");
+                file << "{ \"MARGIN_VERTICAL\":\"";
+                file << value;
+                file << "\"}";
+                file.close();
             }
         } catch( osc::Exception& e ) {
             // any parsing errors such as unexpected argument types, or 
@@ -82,11 +109,15 @@ int main(int argc, char* argv[])
     char buffer[OUTPUT_BUFFER_SIZE];
     osc::OutboundPacketStream p( buffer, OUTPUT_BUFFER_SIZE );
     
-    p << osc::BeginBundleImmediate
+    /*p << osc::BeginBundleImmediate
         << osc::BeginMessage("/b/IPS.LIDAR_START.Value") << 0
         << osc::EndMessage
         << osc::BeginMessage("/b/IPS.LIDAR_ACTIVATE.Value") << 0
-        << osc::EndMessage;
+        << osc::EndMessage
+        << osc::BeginMessage("/b/IPS.MARGIN_HORZONTAL.Value") << 0
+        << osc::EndMessage
+        << osc::BeginMessage("/b/IPS.MARGIN_VERTICAL.Value") << 0
+        << osc::EndMessage;*/
     
     transmitSocket.Send( p.Data(), p.Size() );
 

@@ -14,6 +14,7 @@
 #include <cmath>
 #include <fstream>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <quanergy/osc/OscOutboundPacketStream.h>
 #include <quanergy/osc/OscTypes.h>
@@ -228,9 +229,45 @@ namespace quanergy
           static int lidar_status = 2;
           
 
-          std::ifstream file("../../setBaseline.txt");
+          std::ifstream file("../../setBaseline.json");
 
-          if (file) {
+          std::string address;
+          std::string value_str;
+          double value;
+          
+          if (file && !(file.peek() == std::ifstream::traits_type::eof())) {
+            std::string message( (std::istreambuf_iterator<char>(file) ),
+                                 (std::istreambuf_iterator<char>()    ) );  
+            std::vector<int> indexes;
+            for (int i = 0; i < message.length(); ++i) {
+              if (message[i] == '"') {
+                indexes.push_back(i);
+              }
+            }
+            //std::cout << std::endl;
+            //std::cout << "indexes.size():" << indexes.size() << std::endl;
+            if (indexes.size() == 4) {
+              //std::cout << "getting substring from " << indexes[0] << " to " << indexes[1] << " which will be " << message.substr(indexes[0], indexes[1]) << std::endl;
+              //std::cout << "NOT getting substring from " << indexes[0] + 1 << " to " << indexes[1] - 1 << " which would be " << message.substr(indexes[0] + 1, indexes[1] - 1) << std::endl;
+              address = message.substr(indexes[0] + 1, indexes[1] - indexes[0] - 1);
+              value_str = message.substr(indexes[2] + 1, indexes[3] - indexes[2] - 1);
+              value = atof(value_str.c_str());
+              //std::cout << "message.length():" << message.length() << ", i0:" << indexes[0] << ", i1:" << indexes[1] << ", i2:" << indexes[2] << ", i3:" << indexes[3] << std::endl;
+              //std::cout << "message" << message << std::endl;
+              //std::cout << "value" << value << std::endl;
+            }
+            if (address.length() > 0) {
+              std::cout << "address:" << address << ", value:" << value << std::endl;
+            }
+          }
+
+          static bool running_base_scan = false;
+          if (address == "LIDAR_ACTIVATE" && value == 1) {
+            running_base_scan = true;
+            //std::cout << "setting running_base_scan to true";
+            //std::cout << " - when address:" << address << ", value:" << value << std::endl;
+          }
+          if (running_base_scan) {
             int total_points = 0;
             // Get baseline scan
             for (PointCloudHVDIR::const_iterator i = current_cloud_->begin(); i != current_cloud_->end(); ++i) {
@@ -248,23 +285,25 @@ namespace quanergy
 
               // Get intensity of origin
               if (i->h > -0.0010 && i->h < 0.0010 && i->v == 0) {
-                std::cout << "setting baseline origin intensity" << std::endl;
+                //std::cout << "setting baseline origin intensity" << std::endl;
                 origin_baseline_intensity = i->intensity;
                 origin_baseline_distance = i->d;
               }
             }
             lidar_status = 3;
             ++base_scans_captured;
-            std::cout << base_scans_captured << " base scans captured" << std::endl;
+            //std::cout << base_scans_captured << " base scans captured" << std::endl;
             if (base_scans_captured > 100) {
-              std::remove("../../setBaseline.txt");
+              //std::cout << "trying to set running_base_scan to false" << std::endl;
+              running_base_scan = false;
+              //std::remove("../../setBaseline.json");
+
               /*if (total_points != 0) {
                 std::cout << base_scan.size() / (double)total_points * 100 << "%" << std::endl;
               }*/
               lidar_status = 4;
               base_scans_captured = 0;
-              std::cout << "done with base scan capturing" << std::endl;
-              
+              //std::cout << "done with base scan capturing" << std::endl;              
             }
           }
 
@@ -391,16 +430,14 @@ namespace quanergy
             double RING_1_v = -0.2692;
             double RING_0_v = -0.318505;
 
-            
-                        
-
-
             //int min_age = 100000;
 
             // Recording exclusion zone and field of view
             int exclusion_points_count = 0;
-            bool prev_point_differed = false;
+            bool prev_point_differed[8] = {false};
             for (auto i = comp_scan.begin(); i != comp_scan.end(); ++i) {              
+
+              //std::cout << "VIEWING point - h:" << i->second[0] << ", v:" << i->second[1] << ", d:" << i->second[2] << ", i:" << i->second[3] << ", r:" << i->second[4] << ", t:" << i->second[5] << std::endl;
 
               /*if (i->second[0] == 0 && i->second[4] == 6) {
                 std::cout << "VIEWING point - h:" << i->second[0] << ", v:" << i->second[1] << ", d:" << i->second[2] << ", i:" << i->second[3] << ", r:" << i->second[4] << ", t:" << i->second[5] << std::endl;
@@ -472,6 +509,8 @@ namespace quanergy
                 ring0_center_i = i->second[3];
               }
 
+              int ring = i->second[4];
+
               // Get exclusion zone data              
               if (base_scan.find(i->first) != base_scan.end()) {                
                 double distance = base_scan.find(i->first)->second[2];                  
@@ -481,8 +520,7 @@ namespace quanergy
                   }
 
                   if (i->second[5] >= 2) {
-                    //std::cout << "c distance:" << i->second[2] << ", b distance:" << distance << "h:" << i->second[0] << "v:" << i->second[1] << std::endl;
-                    if (prev_point_differed == true) {
+                    if (prev_point_differed[ring] == true) {
                       count++;
                       if (i->second[0] > max_h) {
                         max_h = i->second[0];
@@ -512,10 +550,10 @@ namespace quanergy
                       }
                       ++exclusion_points_count;
                     }                    
-                    prev_point_differed = true;
+                    prev_point_differed[ring] = true;
                   }
                 } else {                  
-                  prev_point_differed = false;
+                  prev_point_differed[ring] = false;
                   if (i->second[5] > 0) {
                     i->second[5]--;
                   }
@@ -553,7 +591,7 @@ namespace quanergy
             double intercept_v;
             intercept_v=atan((ring3_center_d*sin(-ring3_v))/(ring6_center_d - ring3_center_d*cos(-ring3_v)))*(180/3.141592);
               if (intercept_v < 0) {intercept_v=180+intercept_v;}
-            std::cout << "intercept_v: " << intercept_v << "ring6_center_d: " << ring6_center_d << "ring3_center_d: " << ring3_center_d <<std::endl;
+            //std::cout << "intercept_v: " << intercept_v << "ring6_center_d: " << ring6_center_d << "ring3_center_d: " << ring3_center_d <<std::endl;
             
             //RING V ANGLES CONVERTED FROM RADIANS TO DEGREES
             ring7_v = ring7_v*180/3.141592;
@@ -615,7 +653,15 @@ namespace quanergy
 
             //std::cout << "count: " << count << ", fov_max_v: " << fov_max_v << ", fov_min_v: " << fov_min_v<< ", fov_max_v_distance: " << fov_max_v_distance << ", fov_min_v_distance: " << fov_min_v_distance << std::endl;
             //std::cout << "count: " << count << ", fov_centter_d " << fov_center_d << ", max_v " << max_v << std::endl;
-            
+
+            double ez_margin_h, ez_margin_v;
+            if (address == "MARGIN_HORZONTAL") {
+              ez_margin_h = value;
+              //std::cout << "trying to set ez_margin_h to value:" << value << ". value right now is " << ez_margin_h << std::endl;
+            } else if (address == "MARGIN_VERTICAL") {
+              ez_margin_v = value;              
+            }
+            std::cout << "MARGIN HORIZONTAL" << ez_margin_h << std::endl;
             ////SEND MESAGES TO BEYOND SOFTWARE
             UdpTransmitSocket transmitSocket( IpEndpointName( ADDRESS, SENDING_PORT ) );
             char buffer[OUTPUT_BUFFER_SIZE];
@@ -716,6 +762,17 @@ namespace quanergy
             
             transmitSocket.Send( p.Data(), p.Size() );
           }
+
+          if (file) {
+            file.close();
+          }          
+          std::ofstream file_reopened;
+          file_reopened.open("../../setBaseline.json", std::ofstream::out | std::ofstream::trunc);
+          /*if (file_reopened && !(file_reopened.peek() == std::ifstream::traits_type::eof())) {
+              //std::remove("../../setBaseline.json");
+
+              file_reopened.close();
+          }*/
 
           visits_here++;
 
