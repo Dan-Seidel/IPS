@@ -36,9 +36,13 @@ protected:
 
         try {
             // example of parsing single messages. osc::OsckPacketListener
+
+            //std::cout << "m.AddressPattern():" << m.AddressPattern() << std::endl;
+
             // handles the bundle traversal.
             
-            if ( std::strcmp( m.AddressPattern(), "/b/IPS.LIDAR_START.Value" ) == 0 ) {
+            //if ( std::strcmp( m.AddressPattern(), "/b/IPS.LIDAR_START.Value" ) == 0 ) {
+            if ( std::strcmp( m.AddressPattern(), "LIDAR_START" ) == 0 ) {
                 osc::ReceivedMessageArgumentStream args = m.ArgumentStream();
                 float message;
                 args >> message >> osc::EndMessage;
@@ -51,7 +55,7 @@ protected:
                 } else {
 
                 }
-            } else if ( std::strcmp( m.AddressPattern(), "/b/IPS.LIDAR_ACTIVATE.Value" ) == 0 ) {
+            } else if ( std::strcmp( m.AddressPattern(), "LIDAR_ACTIVATE" ) == 0 ) {
                 osc::ReceivedMessageArgumentStream args = m.ArgumentStream();
                 float value;
                 args >> value >> osc::EndMessage;
@@ -63,7 +67,7 @@ protected:
                 file << "\"}";
                 file.close();
 
-            } else if ( std::strcmp( m.AddressPattern(), "/b/IPS.MARGIN_HORZONTAL.Value" ) == 0 ) {
+            } else if ( std::strcmp( m.AddressPattern(), "MARGIN_HORIZONTAL" ) == 0 ) {
                 osc::ReceivedMessageArgumentStream args = m.ArgumentStream();
                 float value;
                 args >> value >> osc::EndMessage;
@@ -76,7 +80,7 @@ protected:
                 file << value;
                 file << "\"}";
                 file.close();
-            } else if ( std::strcmp( m.AddressPattern(), "/b/IPS.MARGIN_VERTICAL.Value" ) == 0 ) {                osc::ReceivedMessageArgumentStream args = m.ArgumentStream();
+            } else if ( std::strcmp( m.AddressPattern(), "MARGIN_VERTICAL" ) == 0 ) {                osc::ReceivedMessageArgumentStream args = m.ArgumentStream();
                 float value;
                 args >> value >> osc::EndMessage;
 

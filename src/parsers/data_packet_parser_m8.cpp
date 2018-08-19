@@ -654,14 +654,50 @@ namespace quanergy
             //std::cout << "count: " << count << ", fov_max_v: " << fov_max_v << ", fov_min_v: " << fov_min_v<< ", fov_max_v_distance: " << fov_max_v_distance << ", fov_min_v_distance: " << fov_min_v_distance << std::endl;
             //std::cout << "count: " << count << ", fov_centter_d " << fov_center_d << ", max_v " << max_v << std::endl;
 
-            double ez_margin_h, ez_margin_v;
+            static double ez_margin_h, ez_margin_v;
             if (address == "MARGIN_HORZONTAL") {
-              ez_margin_h = value;
+              std::cout << "setting ez_margin_h to " << value << std::endl;
+              ez_margin_h = value; //CENTIMETERS
               //std::cout << "trying to set ez_margin_h to value:" << value << ". value right now is " << ez_margin_h << std::endl;
             } else if (address == "MARGIN_VERTICAL") {
-              ez_margin_v = value;              
+              std::cout << "setting ez_margin_v to " << value << std::endl;
+              ez_margin_v = value; //CENTIMETERS
+
             }
-            std::cout << "MARGIN HORIZONTAL" << ez_margin_h << std::endl;
+            std::cout << "ez_margin_h:" << ez_margin_h << ", ez_margin_v:" << ez_margin_v << std::endl;
+            double ez1_margin_h = ez_margin_h, ez1_margin_v = ez_margin_v;
+            //CONVERT MARGIN WIDTH FROM CENTIMETERS TO METERS TO RADIANS
+            //MARGIN IN RADIANS = MARGIN WIDTH / MARGIN DISTANCE
+            ez1_margin_h = ez1_margin_h / 100 / min_h_distance; //RADIANS
+            ez1_margin_v = ez1_margin_v / 100 / min_v_distance; //RADIANS
+            //std::cout << "MARGIN HORIZONTAL" << ez_margin_h << std::endl;
+
+            //CALCULATE EXCLUSION ZONE BOUNDARIES
+            min_h = min_h - ez1_margin_h;
+            max_h = max_h + ez1_margin_h;
+            min_v = min_v - 0.056 - ez1_margin_v;
+            max_v = max_v + 0.056 + ez1_margin_v;
+
+            //TRANSFORM FOR PROJECTOR OFFSET
+            min_v = (atan((offset_y + min_v_distance * sin(min_v))/(min_v_distance * cos(min_v))));
+            max_v = (atan((offset_y + max_v_distance * sin(max_v))/(max_v_distance * cos(max_v))));
+            
+            //CONVERT TO DEGREES
+            min_h = min_h * 180/3.141592;
+            max_h = max_h * 180/3.141592;
+            min_v = min_v * 180/3.141592;
+            max_v = max_v * 180/3.141592;
+
+            //SCALE
+            double min_x, max_x, min_y, max_y;
+            min_x = min_h * 3.333;
+            max_x = max_h * 3.333;
+            min_y = min_v * 3.333;
+            max_y = max_v * 3.333;         
+            
+
+
+
             ////SEND MESAGES TO BEYOND SOFTWARE
             UdpTransmitSocket transmitSocket( IpEndpointName( ADDRESS, SENDING_PORT ) );
             char buffer[OUTPUT_BUFFER_SIZE];
@@ -671,17 +707,37 @@ namespace quanergy
 
                 //SEND LIDAR STATUS
                 << osc::BeginMessage("/b/VARIABLES.lidar_status") << (int)(lidar_status) 
-                << osc::EndMessage                
+                << osc::EndMessage  
 
-                //PROTECT 1
-                // << osc::BeginMessage("/b/IPS/PROTECT_1.Effect.0/Keys.0/Value1") << (float)(min_x)
-                // << osc::EndMessage
-                // << osc::BeginMessage("/b/IPS/PROTECT_1.Effect.0/Keys.0/Value2") << (float)(max_x)
-                // << osc::EndMessage
-                // << osc::BeginMessage("/b/IPS/PROTECT_1.Effect.0/Keys.0/Value3") << (float)(min_y)
-                // << osc::EndMessage
-                // << osc::BeginMessage("/b/IPS/PROTECT_1.Effect.0/Keys.0/Value4") << (float)(max_y)
-                // << osc::EndMessage
+                //SEND EXCLUSION ZONE DATA TO VARIABLES PANGOSCRIPT THEN TO LIDAR PROTECT EFFECT
+                /*<< osc::BeginMessage("/b/VARIABLES.MIN_H") << (float)(min_h)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.MAX_H") << (float)(max_h)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.MIN_V") << (float)(min_v)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.MAX_V") << (float)(max_v)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.MIN_H_D") << (float)(min_h_distance)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.MAX_H_D") << (float)(max_h_distance)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.MIN_V_D") << (float)(min_v_distance)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/VARIABLES.MAX_V_D") << (float)(max_v_distance)
+                << osc::EndMessage*/
+                
+
+
+                //SEND EXCLUSION ZONE DATA DIRECTLY TO PROTECT 1 EFFECT
+                << osc::BeginMessage("/b/IPS.LIDAR_PROTECT.Effect.0.Keys.0.Value1") << (float)(min_x)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/IPS.LIDAR_PROTECT.Effect.0.Keys.0.Value2") << (float)(max_x)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/IPS.LIDAR_PROTECT.Effect.0.Keys.0.Value3") << (float)(min_y)
+                << osc::EndMessage
+                << osc::BeginMessage("/b/IPS.LIDAR_PROTECT.Effect.0.Keys.0.Value4") << (float)(max_y)
+                << osc::EndMessage
                 
                 // SEND FIELD OF VIEW DATA
                 << osc::BeginMessage("/b/FIELDOFVIEW.fov_min_h") << (float)(fov_min_h)
@@ -740,7 +796,7 @@ namespace quanergy
 
                 // Exclusion zone data                
                 
-                << osc::BeginMessage("/b/VARIABLES.max_v") << (float)(max_v)
+                /*<< osc::BeginMessage("/b/VARIABLES.max_v") << (float)(max_v)
                 << osc::EndMessage
                 << osc::BeginMessage("/b/VARIABLES.min_v") << (float)(min_v)
                 << osc::EndMessage
@@ -755,7 +811,7 @@ namespace quanergy
                 << osc::BeginMessage("/b/VARIABLES.min_h_d") << (float)(min_h_distance)
                 << osc::EndMessage
                 << osc::BeginMessage("/b/VARIABLES.max_h_d") << (float)(max_h_distance)
-                << osc::EndMessage
+                << osc::EndMessage*/
 
             << osc::EndBundle;
                 
