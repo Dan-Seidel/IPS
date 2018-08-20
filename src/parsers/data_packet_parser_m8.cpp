@@ -571,6 +571,15 @@ namespace quanergy
             //std::cout << std::endl << std::endl;
             //std::cout << "MIN: " << min_age << "---------------------------" << std::endl << std::endl << std::endl;
             //std::cout << origin_distance << " " << fov_center7_d << " " << fov_center6_d << " " << fov_center3_d << " " << fov_center0_d << std::endl;
+
+            //DETERMINE INTERCEPT ANGLES
+            //Intercept angle = arctangent(distance2*sin(theta)/distance1-distance2*cos(theta))
+            double intercept_h;
+            double intercept_v;
+            intercept_v=atan((ring3_center_d*sin(-ring3_v))/(ring6_center_d - ring3_center_d*cos(-ring3_v)))*(180/3.141592);
+              if (intercept_v < 0) {intercept_v=180+intercept_v;}
+            std::cout << "intercept_v: " << intercept_v << "ring6_center_d: " << ring6_center_d << "ring3_center_d: " << ring3_center_d <<std::endl;
+            
             
 
             //RING V ANGLES TRANSFORMED FOR SENSOR PROJECTOR OFFSET
@@ -585,13 +594,6 @@ namespace quanergy
             ring1_v = (atan((offset_y + ring1_center_d * sin(ring1_v))/(ring1_center_d * cos(ring1_v))));
             ring0_v = (atan((offset_y + ring0_center_d * sin(ring0_v))/(ring0_center_d * cos(ring0_v))));
 
-            //DETERMINE INTERCEPT ANGLES
-            //Intercept angle = arctangent(distance2*sin(theta)/distance1-distance2*cos(theta))
-            double intercept_h;
-            double intercept_v;
-            intercept_v=atan((ring3_center_d*sin(-ring3_v))/(ring6_center_d - ring3_center_d*cos(-ring3_v)))*(180/3.141592);
-              if (intercept_v < 0) {intercept_v=180+intercept_v;}
-            //std::cout << "intercept_v: " << intercept_v << "ring6_center_d: " << ring6_center_d << "ring3_center_d: " << ring3_center_d <<std::endl;
             
             //RING V ANGLES CONVERTED FROM RADIANS TO DEGREES
             ring7_v = ring7_v*180/3.141592;
@@ -620,15 +622,11 @@ namespace quanergy
 
             //std::cout << "count: " << count << ", min_h " << min_h << ", max_h " << max_h << ", fov_min_h " <<fov_min_h<< ", fov_max_h " <<fov_max_h<< std::endl;
 
-            // Margin setup
-            // double margine_x = 0; // Margin width in meters
-            // double margine_y = 0;
-            // double max_vm = max_v+0.0567+atan(margine_y/max_v_distance); // add angle (0.0567 radians, 3.25 degrees) to protect the space before next empty ring and add margin angle in radians
-            // double min_vm = min_v-0.0567-atan(margine_y/min_v_distance); //-0.0567
+            
 
 
             // Sensor offset compensation (vertical offset only)
-            //height of sensor origin above scanner origin in meters (measured 0.195 +/-0.002)
+            // height of sensor origin above scanner origin in meters (measured 0.195 +/-0.002)
             // double max_vt = atan((offset_y+max_v_distance*sin(max_vm))/(max_v_distance*cos(max_vm))); //v transformed to projector origin
             // double min_vt = atan((offset_y+min_v_distance*sin(min_vm))/(min_v_distance*cos(min_vm)));
             double max_yc = 191*(atan((offset_y+max_v_distance*sin(max_v))/(max_v_distance*cos(max_v)))); 
@@ -656,15 +654,15 @@ namespace quanergy
 
             static double ez_margin_h, ez_margin_v;
             if (address == "MARGIN_HORZONTAL") {
-              std::cout << "setting ez_margin_h to " << value << std::endl;
+              //std::cout << "setting ez_margin_h to " << value << std::endl;
               ez_margin_h = value; //CENTIMETERS
               //std::cout << "trying to set ez_margin_h to value:" << value << ". value right now is " << ez_margin_h << std::endl;
             } else if (address == "MARGIN_VERTICAL") {
-              std::cout << "setting ez_margin_v to " << value << std::endl;
+              //std::cout << "setting ez_margin_v to " << value << std::endl;
               ez_margin_v = value; //CENTIMETERS
 
             }
-            std::cout << "ez_margin_h:" << ez_margin_h << ", ez_margin_v:" << ez_margin_v << std::endl;
+            //std::cout << "ez_margin_h:" << ez_margin_h << ", ez_margin_v:" << ez_margin_v << std::endl;
             double ez1_margin_h = ez_margin_h, ez1_margin_v = ez_margin_v;
             //CONVERT MARGIN WIDTH FROM CENTIMETERS TO METERS TO RADIANS
             //MARGIN IN RADIANS = MARGIN WIDTH / MARGIN DISTANCE
@@ -707,29 +705,10 @@ namespace quanergy
 
                 //SEND LIDAR STATUS
                 << osc::BeginMessage("/b/VARIABLES.lidar_status") << (int)(lidar_status) 
-                << osc::EndMessage  
-
-                //SEND EXCLUSION ZONE DATA TO VARIABLES PANGOSCRIPT THEN TO LIDAR PROTECT EFFECT
-                /*<< osc::BeginMessage("/b/VARIABLES.MIN_H") << (float)(min_h)
-                << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.MAX_H") << (float)(max_h)
-                << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.MIN_V") << (float)(min_v)
-                << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.MAX_V") << (float)(max_v)
-                << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.MIN_H_D") << (float)(min_h_distance)
-                << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.MAX_H_D") << (float)(max_h_distance)
-                << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.MIN_V_D") << (float)(min_v_distance)
-                << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.MAX_V_D") << (float)(max_v_distance)
-                << osc::EndMessage*/
-                
+                << osc::EndMessage       
 
 
-                //SEND EXCLUSION ZONE DATA DIRECTLY TO PROTECT 1 EFFECT
+                //SEND EXCLUSION ZONE DATA DIRECTLY TO lIDAR PROTECT EFFECT
                 << osc::BeginMessage("/b/IPS.LIDAR_PROTECT.Effect.0.Keys.0.Value1") << (float)(min_x)
                 << osc::EndMessage
                 << osc::BeginMessage("/b/IPS.LIDAR_PROTECT.Effect.0.Keys.0.Value2") << (float)(max_x)
@@ -794,24 +773,7 @@ namespace quanergy
                 << osc::BeginMessage("/b/VARIABLES.origin_intensity") << (origin_intensity)
                 << osc::EndMessage             
 
-                // Exclusion zone data                
                 
-                /*<< osc::BeginMessage("/b/VARIABLES.max_v") << (float)(max_v)
-                << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.min_v") << (float)(min_v)
-                << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.min_h") << (float)(min_h)
-                << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.max_h") << (float)(max_h)
-                << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.max_v_d") << (float)(max_v_distance)
-                << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.min_v_d") << (float)(min_v_distance)
-                << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.min_h_d") << (float)(min_h_distance)
-                << osc::EndMessage
-                << osc::BeginMessage("/b/VARIABLES.max_h_d") << (float)(max_h_distance)
-                << osc::EndMessage*/
 
             << osc::EndBundle;
                 
