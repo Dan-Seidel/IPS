@@ -511,10 +511,17 @@ namespace quanergy
 
               int ring = i->second[4];
 
+              static float distance_threshold = 5;
+              //std::cout << (address == "DISTANCE_THRESHOLD") << std::endl;
+              if (address == "DISTANCE_THRESHOLD") {
+                //std::cout << "setting distance_threshold to " << value << std::endl;
+                distance_threshold = value; //PERCENT
+              }
+
               // Get exclusion zone data              
               if (base_scan.find(i->first) != base_scan.end()) {                
                 double distance = base_scan.find(i->first)->second[2];                  
-                if (std::abs(i->second[2] - distance) > distance *0.05) {
+                if (std::abs(i->second[2] - distance) > distance * (distance_threshold / 100)) {
                   if (i->second[5] < 2) {
                     i->second[5]++;
                   }
@@ -578,7 +585,7 @@ namespace quanergy
             double intercept_v;
             intercept_v=atan((ring3_center_d*sin(-ring3_v))/(ring6_center_d - ring3_center_d*cos(-ring3_v)))*(180/3.141592);
               if (intercept_v < 0) {intercept_v=180+intercept_v;}
-            std::cout << "intercept_v: " << intercept_v << "ring6_center_d: " << ring6_center_d << "ring3_center_d: " << ring3_center_d <<std::endl;
+            //std::cout << "intercept_v: " << intercept_v << "ring6_center_d: " << ring6_center_d << "ring3_center_d: " << ring3_center_d <<std::endl;
             
             
 
@@ -652,15 +659,11 @@ namespace quanergy
             //std::cout << "count: " << count << ", fov_max_v: " << fov_max_v << ", fov_min_v: " << fov_min_v<< ", fov_max_v_distance: " << fov_max_v_distance << ", fov_min_v_distance: " << fov_min_v_distance << std::endl;
             //std::cout << "count: " << count << ", fov_centter_d " << fov_center_d << ", max_v " << max_v << std::endl;
 
-            static double ez_margin_h, ez_margin_v;
+            static double ez_margin_h = 100, ez_margin_v = 100;
             if (address == "MARGIN_HORZONTAL") {
-              //std::cout << "setting ez_margin_h to " << value << std::endl;
               ez_margin_h = value; //CENTIMETERS
-              //std::cout << "trying to set ez_margin_h to value:" << value << ". value right now is " << ez_margin_h << std::endl;
             } else if (address == "MARGIN_VERTICAL") {
-              //std::cout << "setting ez_margin_v to " << value << std::endl;
               ez_margin_v = value; //CENTIMETERS
-
             }
             //std::cout << "ez_margin_h:" << ez_margin_h << ", ez_margin_v:" << ez_margin_v << std::endl;
             double ez1_margin_h = ez_margin_h, ez1_margin_v = ez_margin_v;
@@ -793,6 +796,8 @@ namespace quanergy
           }*/
 
           visits_here++;
+
+          // END OF OUR CODE
 
           // start a new cloud
           current_cloud_.reset(new PointCloudHVDIR());

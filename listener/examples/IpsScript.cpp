@@ -92,7 +92,20 @@ protected:
                 file << value;
                 file << "\"}";
                 file.close();
+            } else if ( std::strcmp( m.AddressPattern(), "DISTANCE_THRESHOLD" ) == 0 ) {                osc::ReceivedMessageArgumentStream args = m.ArgumentStream();
+                float value;
+                args >> value >> osc::EndMessage;
+
+                std::cout << "DISTANCE_THRESHOLD " << value << std::endl;
+
+                std::ofstream file;
+                file.open("../../setBaseline.json");
+                file << "{ \"DISTANCE_THRESHOLD\":\"";
+                file << value;
+                file << "\"}";
+                file.close();
             }
+
         } catch( osc::Exception& e ) {
             // any parsing errors such as unexpected argument types, or 
             // missing arguments get thrown as exceptions.
