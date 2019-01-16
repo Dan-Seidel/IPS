@@ -23,7 +23,7 @@
 
 #define ADDRESS "127.0.0.1"
 #define SENDING_PORT 8000
-#define OUTPUT_BUFFER_SIZE 2048 //DEFAULT WAS 1024
+#define OUTPUT_BUFFER_SIZE 4096 //DEFAULT WAS 1024
 
 namespace quanergy
 {
