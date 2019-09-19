@@ -637,11 +637,11 @@ namespace quanergy
             // double max_vt = atan((offset_y+max_v_distance*sin(max_vm))/(max_v_distance*cos(max_vm))); //v transformed to projector origin
             // double min_vt = atan((offset_y+min_v_distance*sin(min_vm))/(min_v_distance*cos(min_vm)));
             double max_yc = 191*(atan((offset_y+max_v_distance*sin(max_v))/(max_v_distance*cos(max_v)))); 
-            // double min_yc = 191*(atan((offset_y+min_v_distance*sin(min_v))/(min_v_distance*cos(min_v))));
+            double min_yc = 191*(atan((offset_y+min_v_distance*sin(min_v))/(min_v_distance*cos(min_v))));
             double max_xc = max_h*191;
-            // double min_xc = min_h*191;
-            // double avg_xc = min_xc+((max_xc-min_xc)/2);
-            // double avg_yc = min_yc+((max_yc-min_yc)/2);
+            double min_xc = min_h*191;
+            double avg_xc = min_xc+((max_xc-min_xc)/2);
+            double avg_yc = min_yc+((max_yc-min_yc)/2);
             
             // Scale for beyond software
             // Projector field of view is roughly -30 t0 +30 degrees
@@ -774,7 +774,14 @@ namespace quanergy
                 << osc::BeginMessage("/b/VARIABLES.origin_distance") << (origin_distance)
                 << osc::EndMessage
                 << osc::BeginMessage("/b/VARIABLES.origin_intensity") << (origin_intensity)
-                << osc::EndMessage             
+                << osc::EndMessage
+
+                //SEND HIGHLIGHT DATA
+                //<< osc::BeginMessage("/b/CORNER_DARTS_STABBING.0.Keys.0.Value1") << (int)(avg_xc)
+                //<< osc::EndMessage
+                //<< osc::BeginMessage("/b/CORNER_DARTS_STABBING.0.Keys.0.Value2") << (int)(avg_yc)
+                //<< osc::EndMessage
+                        
 
                 
 
